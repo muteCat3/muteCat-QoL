@@ -108,6 +108,7 @@ function muteCatQOL:MainFunction()
 		muteCatQOL:InitializeBarMouseoverBehavior()
 		muteCatQOL:ScheduleNoTrackerMinimizeApply()
 		muteCatQOL:InitializeUIUtilities()
+		muteCatQOL:InitializeCombatTextHider()
 		muteCatQOL:InitializeWorldMapMover()
 		MUTECATQOL_HOOKED = muteCatQOL or true
 	end
