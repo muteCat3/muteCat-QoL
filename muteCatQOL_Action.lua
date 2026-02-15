@@ -2,7 +2,6 @@ local _G = _G
 local type = type
 local pairs = pairs
 local ipairs = ipairs
-local next = next
 local GetActionInfo = GetActionInfo
 local GetPetActionInfo = GetPetActionInfo
 local GetPetActionSlotUsable = GetPetActionSlotUsable
@@ -10,13 +9,29 @@ local GetPetActionCooldown = GetPetActionCooldown
 local C_ActionBar_IsUsableAction = C_ActionBar.IsUsableAction
 local C_ActionBar_GetActionCooldown = C_ActionBar.GetActionCooldown
 local C_ActionBar_GetActionCooldownDuration = C_ActionBar.GetActionCooldownDuration
+local C_ActionBar_GetActionUseCount = C_ActionBar.GetActionUseCount
 local C_Item_GetItemCooldown = C_Item.GetItemCooldown
 local C_Spell_IsSpellUsable = C_Spell.IsSpellUsable
 local C_Spell_GetSpellCooldown = C_Spell.GetSpellCooldown
 local C_Spell_GetSpellCooldownDuration = C_Spell.GetSpellCooldownDuration
-
 local function IsActiveCategoryGCD(activeCategory)
 	return type(activeCategory) == "number" and activeCategory == 2316
+end
+
+
+local function IsBar4ButtonName(buttonName)
+	return buttonName ~= nil and buttonName:find("^MultiBarRightButton") ~= nil
+end
+local function IsBottomRightStackBarName(buttonName)
+	return buttonName ~= nil and (
+		buttonName:find("^MultiBar7Button") ~= nil or
+		buttonName:find("^MultiBar6Button") ~= nil
+	)
+end
+
+
+local function IsBar5ButtonName(buttonName)
+	return buttonName ~= nil and buttonName:find("^MultiBar5Button") ~= nil
 end
 function muteCatQOL:UpdateAllActionButtons()
 	for i = 1, muteCatQOL.NUM_ACTIONBAR_BUTTONS do
@@ -292,7 +307,30 @@ muteCatQOL.ApplyStackCountStyle = function(button)
 	end
 	local countText = button.Count
 	local buttonName = button.GetName ~= nil and button:GetName() or nil
-	local isActionBar4Button = (buttonName ~= nil and buttonName:find("^MultiBarRightButton") ~= nil)
+	local isActionBar4Button = IsBar4ButtonName(buttonName)
+	local isActionBar7Button = IsBottomRightStackBarName(buttonName)
+	local isBar5Button = IsBar5ButtonName(buttonName)
+
+	local function GetSafeDisplayCount()
+		if (button.action ~= nil and C_ActionBar_GetActionUseCount ~= nil) then
+			return C_ActionBar_GetActionUseCount(button.action)
+		end
+		return nil
+	end
+
+	local function UpdateStackCountVisibility()
+		local count = GetSafeDisplayCount()
+		if (count ~= nil) then
+			local ok, isZeroOrLess = pcall(function()
+				return count <= 0
+			end)
+			if (ok and isZeroOrLess) then
+				countText:Hide()
+				return
+			end
+		end
+		countText:Show()
+	end
 
 	if (MUTECATQOL_COUNT_ONSHOW_HOOKED == nil) then
 		MUTECATQOL_COUNT_ONSHOW_HOOKED = {}
@@ -307,21 +345,46 @@ muteCatQOL.ApplyStackCountStyle = function(button)
 		MUTECATQOL_COUNT_ONSHOW_HOOKED[countText] = true
 	end
 
+	if (countText.HasScript ~= nil and countText:HasScript("OnTextChanged")) then
+		if (MUTECATQOL_COUNT_ONTEXTCHANGED_HOOKED == nil) then
+			MUTECATQOL_COUNT_ONTEXTCHANGED_HOOKED = {}
+		end
+		if not(MUTECATQOL_COUNT_ONTEXTCHANGED_HOOKED[countText]) then
+			countText:HookScript("OnTextChanged", function(self)
+				local parent = self:GetParent()
+				if (parent ~= nil) then
+					muteCatQOL.ApplyStackCountStyle(parent)
+				end
+			end)
+			MUTECATQOL_COUNT_ONTEXTCHANGED_HOOKED[countText] = true
+		end
+	end
+
 	if (isActionBar4Button) then
 		countText:Hide()
 		return
 	end
 
-	countText:Show()
 	countText:ClearAllPoints()
-	countText:SetPoint("TOPRIGHT", button, "TOPRIGHT", 4, 0)
-	countText:SetJustifyH("RIGHT")
-	countText:SetJustifyV("TOP")
+	if (isActionBar7Button) then
+		countText:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 3, 0)
+		countText:SetJustifyH("RIGHT")
+		countText:SetJustifyV("BOTTOM")
+	else
+		if (isBar5Button) then
+			countText:SetPoint("TOPRIGHT", button, "TOPRIGHT", 1, 0)
+		else
+			countText:SetPoint("TOPRIGHT", button, "TOPRIGHT", 4, 0)
+		end
+		countText:SetJustifyH("RIGHT")
+		countText:SetJustifyV("TOP")
+	end
 	countText:SetTextColor(1, 0, 1, 1)
 	local font, _, flags = countText:GetFont()
 	if (font ~= nil) then
 		countText:SetFont(font, 18, flags)
 	end
+	UpdateStackCountVisibility()
 end
 muteCatQOL.BorderReplacementTexture = "Interface\\AddOns\\muteCatQOL\\resources\\uiactionbar2x"
 muteCatQOL.BorderReplacementAtlas = {
@@ -758,12 +821,16 @@ function muteCatQOL:HookGOCActionButtons()
 	-- SpellFlyoutButtons are created dynamically as needed. This needs to be monitored to apply GOC hooks to new ones.
 	muteCatQOL:HookGOCSpellFlyout()
 	if not(MUTECATQOL_ACTIONBUTTON_UPDATECOOLDOWN_HOOKED) then
-		hooksecurefunc("ActionButton_UpdateCooldown", muteCatQOL.ButtonUpdateHookFunc)
-		MUTECATQOL_ACTIONBUTTON_UPDATECOOLDOWN_HOOKED = true
+		if (type(ActionButton_UpdateCooldown) == "function") then
+			hooksecurefunc("ActionButton_UpdateCooldown", muteCatQOL.ButtonUpdateHookFunc)
+			MUTECATQOL_ACTIONBUTTON_UPDATECOOLDOWN_HOOKED = true
+		end
 	end
 	if not(MUTECATQOL_MULTICASTSPELLBUTTON_UPDATECOOLDOWN_HOOKED) then
-		hooksecurefunc("MultiCastSpellButton_UpdateCooldown", muteCatQOL.ButtonUpdateHookFunc)
-		MUTECATQOL_MULTICASTSPELLBUTTON_UPDATECOOLDOWN_HOOKED = true
+		if (type(MultiCastSpellButton_UpdateCooldown) == "function") then
+			hooksecurefunc("MultiCastSpellButton_UpdateCooldown", muteCatQOL.ButtonUpdateHookFunc)
+			MUTECATQOL_MULTICASTSPELLBUTTON_UPDATECOOLDOWN_HOOKED = true
+		end
 	end
 end
 
@@ -776,3 +843,14 @@ function muteCatQOL:HookGOCPetActionButtons()
 		end
 	end
 end
+
+
+
+
+
+
+
+
+
+
+

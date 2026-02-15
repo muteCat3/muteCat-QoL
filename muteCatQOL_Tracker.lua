@@ -3,6 +3,9 @@ local ipairs = ipairs
 function muteCatQOL:PLAYER_ENTERING_WORLD()
 	muteCatQOL:UpdateStanceBarVisibility()
 	muteCatQOL:ScheduleNoTrackerMinimizeApply()
+	if (muteCatQOL.ScheduleServiceChannelLeave ~= nil) then
+		muteCatQOL:ScheduleServiceChannelLeave()
+	end
 end
 
 function muteCatQOL:HideTrackerMinimizeButtonTextures(button)
@@ -125,6 +128,9 @@ end
 
 function muteCatQOL:PLAYER_LOGIN()
 	muteCatQOL:ScheduleNoTrackerMinimizeApply()
+	if (muteCatQOL.ScheduleServiceChannelLeave ~= nil) then
+		muteCatQOL:ScheduleServiceChannelLeave()
+	end
 end
 
 function muteCatQOL:QUEST_LOG_UPDATE()
@@ -138,3 +144,5 @@ end
 function muteCatQOL:UI_SCALE_CHANGED()
 	muteCatQOL:ScheduleNoTrackerMinimizeApply()
 end
+
+
