@@ -164,12 +164,15 @@ function muteCatQOL:UpdateBuffBarAlpha()
 end
 
 function muteCatQOL:UpdateUIUtilities()
-	muteCatQOL:ApplyBagsBarHidden()
 	muteCatQOL:UpdateMicroMenuAlpha()
 	muteCatQOL:UpdateBuffBarAlpha()
 end
 
 function muteCatQOL:InitializeUIUtilities()
+	muteCatQOL:ApplyBagsBarHidden()
+	C_Timer.After(2, function()
+		muteCatQOL:ApplyBagsBarHidden()
+	end)
 	muteCatQOL:UpdateUIUtilities()
 	if (MUTECATQOL_UI_TICKER == nil) then
 		MUTECATQOL_UI_TICKER = C_Timer.NewTicker(muteCatQOL.UITickTime or 0.1, function()

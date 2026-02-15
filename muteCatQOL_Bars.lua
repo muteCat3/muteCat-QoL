@@ -3,6 +3,7 @@ local ipairs = ipairs
 local InCombatLockdown = InCombatLockdown
 local IsMounted = IsMounted
 local IsInInstance = IsInInstance
+local math_abs = math.abs
 
 function muteCatQOL:BuildBarButtons(prefix, maxButtons)
 	local buttons = {}
@@ -25,6 +26,9 @@ function muteCatQOL:IsAnyBarButtonMouseOver(buttons)
 end
 
 function muteCatQOL:SetBarButtonsAlpha(config, alpha)
+	if (config.currentAlpha == alpha) then
+		return
+	end
 	for _, button in ipairs(config.buttons) do
 		if (button ~= nil) then
 			button:SetAlpha(alpha)
@@ -71,7 +75,7 @@ function muteCatQOL:UpdateBarButtonsAlphaWithHideDelay(config, targetAlpha, forc
 	end
 
 	local delta = targetAlpha - config.currentAlpha
-	if (math.abs(delta) <= 0.01) then
+	if (math_abs(delta) <= 0.01) then
 		muteCatQOL:SetBarButtonsAlpha(config, targetAlpha)
 		return
 	end
@@ -95,6 +99,11 @@ function muteCatQOL:UpdateBarMouseoverBehavior()
 		return
 	end
 
+	local inCombat = InCombatLockdown()
+	local mounted = IsMounted()
+	local _, instanceType = IsInInstance()
+	local keepVisibleInInstance = (instanceType == "party" or instanceType == "raid")
+
 	local groupMouseOverState = {}
 	for _, config in ipairs(MUTECATQOL_BAR_CONFIGS) do
 		if (config.group ~= nil) then
@@ -108,37 +117,42 @@ function muteCatQOL:UpdateBarMouseoverBehavior()
 	end
 
 	for _, config in ipairs(MUTECATQOL_BAR_CONFIGS) do
-		local isMouseOver
-		if (config.group ~= nil) then
-			isMouseOver = groupMouseOverState[config.group] or false
-		else
-			isMouseOver = muteCatQOL:IsAnyBarButtonMouseOver(config.buttons)
+		local mode = config.mode
+		local needsMouseOver = (mode == "showhide" or mode == "dim")
+		local isMouseOver = false
+		if (needsMouseOver) then
+			if (config.group ~= nil) then
+				isMouseOver = groupMouseOverState[config.group] or false
+			else
+				isMouseOver = muteCatQOL:IsAnyBarButtonMouseOver(config.buttons)
+			end
 		end
+
 		local targetAlpha
 		local forceInstant = false
-		if (config.mode == "showhide") then
+
+		if (mode == "showhide") then
 			targetAlpha = isMouseOver and 1 or 0
-		elseif (config.mode == "dim") then
-			if InCombatLockdown() then
+		elseif (mode == "dim") then
+			if inCombat then
 				targetAlpha = 1
 				forceInstant = true
 			else
 				targetAlpha = isMouseOver and 1 or config.dimAlpha
 			end
-		elseif (config.mode == "combatdim") then
-			targetAlpha = InCombatLockdown() and 1 or (config.dimAlpha or 0.3)
+		elseif (mode == "combatdim") then
+			targetAlpha = inCombat and 1 or (config.dimAlpha or 0.3)
 			forceInstant = true
-		elseif (config.mode == "combatonly") then
-			targetAlpha = InCombatLockdown() and 1 or 0
+		elseif (mode == "combatonly") then
+			targetAlpha = inCombat and 1 or 0
 			forceInstant = true
-		elseif (config.mode == "mounthide") then
-			local _, instanceType = IsInInstance()
-			local keepVisibleInInstance = (instanceType == "party" or instanceType == "raid")
-			targetAlpha = (IsMounted() and not keepVisibleInInstance) and 0 or 1
+		elseif (mode == "mounthide") then
+			targetAlpha = (mounted and not keepVisibleInInstance) and 0 or 1
 			forceInstant = true
 		else
 			targetAlpha = 1
 		end
+
 		muteCatQOL:UpdateBarButtonsAlphaWithHideDelay(config, targetAlpha, forceInstant, isMouseOver)
 	end
 end
@@ -160,6 +174,7 @@ function muteCatQOL:InitializeBarMouseoverBehavior()
 			{ id = 8, mode = "mounthide", buttons = muteCatQOL:BuildBarButtons("MultiBar7Button", 12), lastAlpha = nil },
 		}
 	end
+
 	if (MUTECATQOL_BAR_MOUSEOVER_TICKER == nil) then
 		MUTECATQOL_BAR_MOUSEOVER_TICKER = C_Timer.NewTicker(muteCatQOL.BarMouseoverTickTime or 0.1, function()
 			muteCatQOL:UpdateBarMouseoverBehavior()

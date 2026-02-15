@@ -1,85 +1,54 @@
 # muteCat QOL
 
-`muteCat QOL` ist ein Blizzard-UI Quality-of-Life Addon fuer WoW `12.0.1`.
+`muteCat QOL` ist ein schlankes Blizzard-UI-Addon für WoW `12.0.1`.
+Es läuft ohne Optionsfenster und aktiviert alle Funktionen automatisch.
 
-Das Addon ist bewusst "always on" (ohne Optionsfenster) und kombiniert mehrere kleine UI-Anpassungen in einem Paket.
+## Funktionen
 
-## Features
+- Actionbar-Desaturierung für Cooldowns/Unbenutzbarkeit
+- Aufgeräumte Blizzard-Button-Overlays und Border
+- Stack-Text-Styling (inkl. Sonderregel für Bar 4)
+- Stance-Bar-Logik (Hide bei definierter Stance)
+- Objective-Tracker-Header + Minimize-Button ausblenden
+- Micro-Menü: `30%` Alpha, bei Mouseover `100%`
+- Bags-Bar dauerhaft ausblenden
+- Buffbar: bei Mouseover einblenden, sonst nach `1s` ausblenden
+- WorldMap verschiebbar + Position persistent (inkl. TomTom-Overlay)
+- Combat-Text-Hide über aktuelle CVar-Logik
+- Standard-CVars für Kamera/QoL werden beim Start gesetzt
 
-### Actionbars / Cooldown Look
+## Actionbar-Verhalten
 
-- Cooldown-Desaturate fuer Blizzard-Actionbuttons
-- Border-/Overlay-Aufraeumung fuer Blizzard-Buttons
-- Stack-Text Styling (inkl. Ausnahmen fuer bestimmte Bars)
-- Range/Not-Targetable Overlay-Hide (ohne Stack-Anzeige zu verlieren)
+- Bar 1/2/3/5: Mouseover sofort sichtbar, Mouseout nach `1s` ausblenden (ohne Fade)
+- Bar 4: außerhalb Combat `30%`, im Combat `100%`
+- Bar 6/7/8: gemountet ausblenden, in Dungeon/Raid auch gemountet sichtbar
 
-### Actionbar Visibility
+## Befehle
 
-- Bar 1/2/3/5:
-  - Mouseover: sofort einblenden
-  - Mouseout: `1s` Verzoegerung, dann sofort ausblenden (kein Fade)
-- Bar 4:
-  - ausserhalb Combat: `30%` Alpha
-  - im Combat: `100%` Alpha
-- Bar 6/7/8:
-  - gemountet: sofort ausblenden
-  - nicht gemountet: sofort einblenden
+- `/mcqol lock` -> WorldMap sperren
+- `/mcqol unlock` -> WorldMap entsperren
+- Alias: `/mutecatqol lock`, `/mutecatqol unlock`
 
-### Stance Bar
+## Gesetzte CVars (Auszug)
 
-- Stance-Bar wird automatisch ausgeblendet, wenn die definierte Stance aktiv ist (aktuell ueber `spellID = 465`)
-- Combat-sicheres Verhalten
-
-### Tracker
-
-- "All Objectives" Header im Objective Tracker ausgeblendet
-- Minimize-Button des Tracker-Headers ausgeblendet/deaktiviert
-
-### Micro Menu / Bags / Buffbar
-
-- Micro Menu: `30%` Alpha, bei Mouseover `100%`
-- BagsBar: dauerhaft ausgeblendet
-- Buffbar: standardmaessig ausgeblendet, bei Mouseover sichtbar, danach `1s` Delay bis wieder ausgeblendet
-
-### World Map Mover + Persistenz
-
-- WorldMap ist beweglich
-- Position wird ueber Reload/Restart gespeichert (`SavedVariables`)
-- Lock/Unlock fuer map movement
-- TomTom-Overlay (`TomTomWorldFrame`) wird als Drag-Quelle mitberuecksichtigt
-
-## Commands
-
-### WorldMap Lock/Unlock
-
-- `/mcqol unlock`
-  - WorldMap ist verschiebbar
-- `/mcqol lock`
-  - WorldMap wird gesperrt (nicht mehr verschiebbar), Position bleibt gespeichert
-
-Alias:
-
-- `/mutecatqol lock`
-- `/mutecatqol unlock`
-
-Wenn du nur `/mcqol` eingibst, zeigt das Addon die Kurz-Hilfe.
+- `cameraReduceUnexpectedMovement = 1`
+- `cameraYawSmoothSpeed = 180`
+- `cameraPitchSmoothSpeed = 180`
+- `cameraIndirectOffset = 0`
+- `test_cameraDynamicPitch = 0`
+- `cameraIndirectVisibility = 1`
+- `AutoPushSpellToActionBar = 0`
+- `UnitNamePlayerGuild = 0`
+- `UnitNamePlayerPVPTitle = 0`
+- `UnitNameGuildTitle = 0`
+- `ResampleAlwaysSharpen = 1`
 
 ## Installation
 
 1. Ordner `muteCatQOL` nach `World of Warcraft/_retail_/Interface/AddOns/` kopieren.
-2. Spiel neu starten oder `/reload`.
-3. `muteCat QOL` im AddOn-Menue aktivieren.
+2. Spiel starten oder `/reload`.
+3. Addon `muteCat QOL` aktivieren.
 
 ## SavedVariables
 
 - `muteCatQOLDB`
-
-## Dateien (Modularisierung)
-
-- `muteCatQOL_Core.lua`
-- `muteCatQOL_Action.lua`
-- `muteCatQOL_Bars.lua`
-- `muteCatQOL_Stance.lua`
-- `muteCatQOL_Tracker.lua`
-- `muteCatQOL_UI.lua`
-- `muteCatQOL_Map.lua`
