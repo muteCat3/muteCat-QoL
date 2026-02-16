@@ -305,30 +305,14 @@ muteCatQOL.ApplyStackCountStyle = function(button)
 	if (button == nil or button.Count == nil) then
 		return
 	end
+
 	local countText = button.Count
 	local buttonName = button.GetName ~= nil and button:GetName() or nil
 	local isActionBar4Button = IsBar4ButtonName(buttonName)
 	local isActionBar7Button = IsBottomRightStackBarName(buttonName)
 	local isBar5Button = IsBar5ButtonName(buttonName)
 
-	local function GetSafeDisplayCount()
-		if (button.action ~= nil and C_ActionBar_GetActionUseCount ~= nil) then
-			return C_ActionBar_GetActionUseCount(button.action)
-		end
-		return nil
-	end
-
 	local function UpdateStackCountVisibility()
-		local count = GetSafeDisplayCount()
-		if (count ~= nil) then
-			local ok, isZeroOrLess = pcall(function()
-				return count <= 0
-			end)
-			if (ok and isZeroOrLess) then
-				countText:Hide()
-				return
-			end
-		end
 		countText:Show()
 	end
 
@@ -367,14 +351,14 @@ muteCatQOL.ApplyStackCountStyle = function(button)
 
 	countText:ClearAllPoints()
 	if (isActionBar7Button) then
-		countText:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 3, 0)
+		countText:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 2, 0)
 		countText:SetJustifyH("RIGHT")
 		countText:SetJustifyV("BOTTOM")
 	else
 		if (isBar5Button) then
-			countText:SetPoint("TOPRIGHT", button, "TOPRIGHT", 1, 0)
+			countText:SetPoint("TOPRIGHT", button, "TOPRIGHT", 0, 0)
 		else
-			countText:SetPoint("TOPRIGHT", button, "TOPRIGHT", 4, 0)
+			countText:SetPoint("TOPRIGHT", button, "TOPRIGHT", 3, 0)
 		end
 		countText:SetJustifyH("RIGHT")
 		countText:SetJustifyV("TOP")
@@ -843,6 +827,10 @@ function muteCatQOL:HookGOCPetActionButtons()
 		end
 	end
 end
+
+
+
+
 
 
 

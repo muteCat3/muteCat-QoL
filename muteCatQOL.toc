@@ -15,7 +15,4 @@ muteCatQOL_Action.lua
 muteCatQOL_Bars.lua
 muteCatQOL_UI.lua
 muteCatQOL_Map.lua
-muteCatQOL_CombatText.lua
-muteCatQOL_CVars.lua
 muteCatQOL_Channel.lua
-

@@ -2,8 +2,6 @@ local _G = _G
 local ipairs = ipairs
 local InCombatLockdown = InCombatLockdown
 local IsMounted = IsMounted
-local IsInInstance = IsInInstance
-local math_abs = math.abs
 
 function muteCatQOL:BuildBarButtons(prefix, maxButtons)
 	local buttons = {}
@@ -26,9 +24,6 @@ function muteCatQOL:IsAnyBarButtonMouseOver(buttons)
 end
 
 function muteCatQOL:SetBarButtonsAlpha(config, alpha)
-	if (config.currentAlpha == alpha) then
-		return
-	end
 	for _, button in ipairs(config.buttons) do
 		if (button ~= nil) then
 			button:SetAlpha(alpha)
@@ -75,12 +70,12 @@ function muteCatQOL:UpdateBarButtonsAlphaWithHideDelay(config, targetAlpha, forc
 	end
 
 	local delta = targetAlpha - config.currentAlpha
-	if (math_abs(delta) <= 0.01) then
+	if (math.abs(delta) <= 0.01) then
 		muteCatQOL:SetBarButtonsAlpha(config, targetAlpha)
 		return
 	end
 
-	local tick = muteCatQOL.BarMouseoverTickTime or 0.1
+	local tick = muteCatQOL.BarMouseoverTickTime or 0.05
 	local duration = muteCatQOL.BarMouseoverFadeOutDuration or 0.2
 	local step = tick / duration
 	if (step > 1) then
@@ -99,11 +94,6 @@ function muteCatQOL:UpdateBarMouseoverBehavior()
 		return
 	end
 
-	local inCombat = InCombatLockdown()
-	local mounted = IsMounted()
-	local _, instanceType = IsInInstance()
-	local keepVisibleInInstance = (instanceType == "party" or instanceType == "raid")
-
 	local groupMouseOverState = {}
 	for _, config in ipairs(MUTECATQOL_BAR_CONFIGS) do
 		if (config.group ~= nil) then
@@ -117,49 +107,42 @@ function muteCatQOL:UpdateBarMouseoverBehavior()
 	end
 
 	for _, config in ipairs(MUTECATQOL_BAR_CONFIGS) do
-		local mode = config.mode
-		local needsMouseOver = (mode == "showhide" or mode == "dim")
-		local isMouseOver = false
-		if (needsMouseOver) then
-			if (config.group ~= nil) then
-				isMouseOver = groupMouseOverState[config.group] or false
-			else
-				isMouseOver = muteCatQOL:IsAnyBarButtonMouseOver(config.buttons)
-			end
+		local isMouseOver
+		if (config.group ~= nil) then
+			isMouseOver = groupMouseOverState[config.group] or false
+		else
+			isMouseOver = muteCatQOL:IsAnyBarButtonMouseOver(config.buttons)
 		end
-
 		local targetAlpha
 		local forceInstant = false
-
-		if (mode == "showhide") then
+		if (config.mode == "showhide") then
 			targetAlpha = isMouseOver and 1 or 0
-		elseif (mode == "dim") then
-			if inCombat then
+		elseif (config.mode == "dim") then
+			if InCombatLockdown() then
 				targetAlpha = 1
 				forceInstant = true
 			else
 				targetAlpha = isMouseOver and 1 or config.dimAlpha
 			end
-		elseif (mode == "combatdim") then
-			targetAlpha = inCombat and 1 or (config.dimAlpha or 0.3)
+		elseif (config.mode == "combatdim") then
+			targetAlpha = InCombatLockdown() and 1 or (config.dimAlpha or 0.3)
 			forceInstant = true
-		elseif (mode == "combatonly") then
-			targetAlpha = inCombat and 1 or 0
+		elseif (config.mode == "combatonly") then
+			targetAlpha = InCombatLockdown() and 1 or 0
 			forceInstant = true
-		elseif (mode == "mounthide") then
-			targetAlpha = (mounted and not keepVisibleInInstance) and 0 or 1
+		elseif (config.mode == "mounthide") then
+			targetAlpha = IsMounted() and 0 or 1
 			forceInstant = true
 		else
 			targetAlpha = 1
 		end
-
 		muteCatQOL:UpdateBarButtonsAlphaWithHideDelay(config, targetAlpha, forceInstant, isMouseOver)
 	end
 end
 
 muteCatQOL.BarMouseoverHideDelay = 1.0
 muteCatQOL.BarMouseoverFadeOutDuration = 0.2
-muteCatQOL.BarMouseoverTickTime = 0.1
+muteCatQOL.BarMouseoverTickTime = 0.05
 
 function muteCatQOL:InitializeBarMouseoverBehavior()
 	if (MUTECATQOL_BAR_CONFIGS == nil) then
@@ -174,9 +157,8 @@ function muteCatQOL:InitializeBarMouseoverBehavior()
 			{ id = 8, mode = "mounthide", buttons = muteCatQOL:BuildBarButtons("MultiBar7Button", 12), lastAlpha = nil },
 		}
 	end
-
 	if (MUTECATQOL_BAR_MOUSEOVER_TICKER == nil) then
-		MUTECATQOL_BAR_MOUSEOVER_TICKER = C_Timer.NewTicker(muteCatQOL.BarMouseoverTickTime or 0.1, function()
+		MUTECATQOL_BAR_MOUSEOVER_TICKER = C_Timer.NewTicker(0.05, function()
 			muteCatQOL:UpdateBarMouseoverBehavior()
 		end)
 	end
