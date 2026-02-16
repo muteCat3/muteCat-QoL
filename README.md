@@ -1,35 +1,38 @@
 # muteCat QOL
 
-`muteCat QOL` ist ein schlankes Blizzard-UI-Addon für WoW `12.0.1`.
-Es läuft ohne Optionsfenster und aktiviert alle Funktionen automatisch.
+`muteCat QOL` is a lightweight Blizzard UI quality-of-life addon for WoW `12.0.1`.
+It is always-on (no options panel) and applies all features automatically.
 
-## Funktionen
+## Features
 
-- Actionbar-Desaturierung für Cooldowns/Unbenutzbarkeit
-- Aufgeräumte Blizzard-Button-Overlays und Border
-- Stack-Text-Styling (inkl. Sonderregel für Bar 4)
-- Stance-Bar-Logik (Hide bei definierter Stance)
-- Objective-Tracker-Header + Minimize-Button ausblenden
-- Micro-Menü: `30%` Alpha, bei Mouseover `100%`
-- Bags-Bar dauerhaft ausblenden
-- Buffbar: bei Mouseover einblenden, sonst nach `1s` ausblenden
-- WorldMap verschiebbar + Position persistent (inkl. TomTom-Overlay)
-- Combat-Text-Hide über aktuelle CVar-Logik
-- Standard-CVars für Kamera/QoL werden beim Start gesetzt
+- Action button cooldown/desaturation tuning for Blizzard bars
+- Cleaner Blizzard button borders/overlays
+- Stack count styling and custom anchor rules
+- Stance bar visibility logic (hide on configured stance)
+- Objective Tracker header + minimize button hidden
+- Micro menu alpha: `30%` idle, `100%` on mouseover
+- Bags bar permanently hidden
+- Buff bar mouseover visibility with hide delay
+- World Map movable with persistent saved position
+- TomTom world frame supported as map drag source
+- Floating combat text disabled via updated CVar handling
+- Edit Mode live coordinate overlay integrated (LibEditMode-first)
+- Service channel auto-leave logic (trade channel remains)
+- Startup QoL camera/interface CVar profile
 
-## Actionbar-Verhalten
+## Action Bar Behavior
 
-- Bar 1/2/3/5: Mouseover sofort sichtbar, Mouseout nach `1s` ausblenden (ohne Fade)
-- Bar 4: außerhalb Combat `30%`, im Combat `100%`
-- Bar 6/7/8: gemountet ausblenden, in Dungeon/Raid auch gemountet sichtbar
+- Bars `1/2/3/5`: show instantly on mouseover, hide after `1s` delay (no fade)
+- Bar `4`: `30%` alpha out of combat, `100%` in combat
+- Bars `6/7/8`: hidden while mounted, but remain visible while mounted inside dungeon/raid
 
-## Befehle
+## Commands
 
-- `/mcqol lock` -> WorldMap sperren
-- `/mcqol unlock` -> WorldMap entsperren
-- Alias: `/mutecatqol lock`, `/mutecatqol unlock`
+- `/mcqol lock` -> lock World Map position
+- `/mcqol unlock` -> unlock World Map position
+- Aliases: `/mutecatqol lock`, `/mutecatqol unlock`
 
-## Gesetzte CVars (Auszug)
+## Default CVars (highlights)
 
 - `cameraReduceUnexpectedMovement = 1`
 - `cameraYawSmoothSpeed = 180`
@@ -45,9 +48,9 @@ Es läuft ohne Optionsfenster und aktiviert alle Funktionen automatisch.
 
 ## Installation
 
-1. Ordner `muteCatQOL` nach `World of Warcraft/_retail_/Interface/AddOns/` kopieren.
-2. Spiel starten oder `/reload`.
-3. Addon `muteCat QOL` aktivieren.
+1. Copy the `muteCatQOL` folder to `World of Warcraft/_retail_/Interface/AddOns/`.
+2. Start the game or run `/reload`.
+3. Enable `muteCat QOL` in the AddOns menu.
 
 ## SavedVariables
 
