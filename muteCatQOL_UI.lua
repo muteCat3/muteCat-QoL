@@ -3,7 +3,7 @@ local ipairs = ipairs
 
 muteCatQOL.MicroMenuIdleAlpha = 0.3
 muteCatQOL.BuffBarHideDelay = 1.0
-muteCatQOL.UITickTime = 0.05
+muteCatQOL.UITickTime = 0.1
 
 function muteCatQOL:GetMicroMenuFrame()
 	return _G["MicroMenuContainer"] or _G["MicroButtonAndBagsBar"] or _G["MicroButtonBar"]
@@ -72,25 +72,16 @@ function muteCatQOL:IsBuffBarMouseOver()
 	if (muteCatQOL:IsMouseOverFrameOrChildren(tempEnchantFrame)) then
 		return true
 	end
-	for i = 1, 40 do
-		local buffButton = _G["BuffButton"..i]
-		if (buffButton ~= nil and buffButton.IsMouseOver ~= nil and buffButton:IsMouseOver()) then
-			return true
-		end
-	end
-	for i = 1, 3 do
-		local tempEnchantButton = _G["TempEnchant"..i]
-		if (tempEnchantButton ~= nil and tempEnchantButton.IsMouseOver ~= nil and tempEnchantButton:IsMouseOver()) then
-			return true
-		end
-	end
 	return false
 end
 
 function muteCatQOL:ApplyBagsBarHidden()
 	local bagsBar = _G["BagsBar"]
 	if (bagsBar ~= nil) then
-		bagsBar:SetAlpha(0)
+		if not(bagsBar.__muteCatQOLHidden) then
+			bagsBar:SetAlpha(0)
+			bagsBar.__muteCatQOLHidden = true
+		end
 		if (bagsBar.EnableMouse ~= nil) then
 			bagsBar:EnableMouse(false)
 		end
@@ -114,7 +105,10 @@ function muteCatQOL:ApplyBagsBarHidden()
 	end
 	for _, button in ipairs(bagButtons) do
 		if (button ~= nil) then
-			button:SetAlpha(0)
+			if not(button.__muteCatQOLHidden) then
+				button:SetAlpha(0)
+				button.__muteCatQOLHidden = true
+			end
 			if (button.EnableMouse ~= nil) then
 				button:EnableMouse(false)
 			end
@@ -170,15 +164,18 @@ function muteCatQOL:UpdateBuffBarAlpha()
 end
 
 function muteCatQOL:UpdateUIUtilities()
-	muteCatQOL:ApplyBagsBarHidden()
 	muteCatQOL:UpdateMicroMenuAlpha()
 	muteCatQOL:UpdateBuffBarAlpha()
 end
 
 function muteCatQOL:InitializeUIUtilities()
+	muteCatQOL:ApplyBagsBarHidden()
+	C_Timer.After(2, function()
+		muteCatQOL:ApplyBagsBarHidden()
+	end)
 	muteCatQOL:UpdateUIUtilities()
 	if (MUTECATQOL_UI_TICKER == nil) then
-		MUTECATQOL_UI_TICKER = C_Timer.NewTicker(muteCatQOL.UITickTime or 0.05, function()
+		MUTECATQOL_UI_TICKER = C_Timer.NewTicker(muteCatQOL.UITickTime or 0.1, function()
 			muteCatQOL:UpdateUIUtilities()
 		end)
 	end

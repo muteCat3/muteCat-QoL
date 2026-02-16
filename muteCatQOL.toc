@@ -14,5 +14,6 @@ muteCatQOL_Tracker.lua
 muteCatQOL_Action.lua
 muteCatQOL_Bars.lua
 muteCatQOL_UI.lua
+muteCatQOL_EditModeCoords.lua
 muteCatQOL_Map.lua
 muteCatQOL_Channel.lua

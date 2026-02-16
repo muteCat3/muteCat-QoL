@@ -1,6 +1,5 @@
 local _G = _G
 local ipairs = ipairs
-
 function muteCatQOL:PLAYER_ENTERING_WORLD()
 	muteCatQOL:UpdateStanceBarVisibility()
 	muteCatQOL:ScheduleNoTrackerMinimizeApply()
@@ -145,3 +144,5 @@ end
 function muteCatQOL:UI_SCALE_CHANGED()
 	muteCatQOL:ScheduleNoTrackerMinimizeApply()
 end
+
+

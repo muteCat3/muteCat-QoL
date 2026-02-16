@@ -54,6 +54,10 @@ function muteCatQOL:OnDisable()
 		MUTECATQOL_UI_TICKER:Cancel()
 		MUTECATQOL_UI_TICKER = nil
 	end
+	if (MUTECATQOL_EDITMODE_COORDS_TICKER ~= nil) then
+		MUTECATQOL_EDITMODE_COORDS_TICKER:Cancel()
+		MUTECATQOL_EDITMODE_COORDS_TICKER = nil
+	end
 end
 
 function muteCatQOL:MainFunction()
@@ -110,6 +114,7 @@ function muteCatQOL:MainFunction()
 		muteCatQOL:InitializeUIUtilities()
 		muteCatQOL:InitializeServiceChannelAutoLeave()
 		muteCatQOL:InitializeWorldMapMover()
+		muteCatQOL:InitializeEditModeCoords()
 		MUTECATQOL_HOOKED = muteCatQOL or true
 	end
 end

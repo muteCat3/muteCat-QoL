@@ -199,4 +199,7 @@ function muteCatQOL:ADDON_LOADED(addonName)
 	if (addonName == "TomTom") then
 		muteCatQOL:InitializeWorldMapMover()
 	end
+	if (addonName == "Blizzard_EditMode") then
+		muteCatQOL:InitializeEditModeCoords()
+	end
 end
