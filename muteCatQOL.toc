@@ -3,6 +3,7 @@
 ## Author: Ben
 ## IconTexture: Interface\Addons\muteCatQOL\micon
 ## SavedVariables: muteCatQOLDB
+## OptionalDeps: LibEditMode
 
 Libs\LibStub\LibStub.lua
 Libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
@@ -14,6 +15,7 @@ muteCatQOL_Tracker.lua
 muteCatQOL_Action.lua
 muteCatQOL_Bars.lua
 muteCatQOL_UI.lua
+muteCatQOL_BuffStacks.lua
 muteCatQOL_EditModeCoords.lua
 muteCatQOL_Map.lua
 muteCatQOL_Channel.lua

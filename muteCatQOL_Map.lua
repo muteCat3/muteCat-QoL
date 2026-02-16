@@ -202,4 +202,10 @@ function muteCatQOL:ADDON_LOADED(addonName)
 	if (addonName == "Blizzard_EditMode") then
 		muteCatQOL:InitializeEditModeCoords()
 	end
+	if (addonName == "LibEditMode") then
+		muteCatQOL:InitializeEditModeCoords()
+	end
+	if (addonName == "Blizzard_CooldownViewer") then
+		muteCatQOL:InitializeBuffIconStacks()
+	end
 end

@@ -115,6 +115,8 @@ function muteCatQOL:MainFunction()
 		muteCatQOL:InitializeServiceChannelAutoLeave()
 		muteCatQOL:InitializeWorldMapMover()
 		muteCatQOL:InitializeEditModeCoords()
+		muteCatQOL:InitializeBuffIconStacks()
 		MUTECATQOL_HOOKED = muteCatQOL or true
 	end
 end
+
