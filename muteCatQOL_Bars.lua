@@ -4,6 +4,26 @@ local InCombatLockdown = InCombatLockdown
 local IsMounted = IsMounted
 local IsInInstance = IsInInstance
 local math_abs = math.abs
+local HasVehicleActionBar = HasVehicleActionBar
+local HasOverrideActionBar = HasOverrideActionBar
+local HasTempShapeshiftActionBar = HasTempShapeshiftActionBar
+local IsPossessBarVisible = IsPossessBarVisible
+
+local function IsSpecialActionBarStateActive()
+	if (HasVehicleActionBar ~= nil and HasVehicleActionBar()) then
+		return true
+	end
+	if (HasOverrideActionBar ~= nil and HasOverrideActionBar()) then
+		return true
+	end
+	if (HasTempShapeshiftActionBar ~= nil and HasTempShapeshiftActionBar()) then
+		return true
+	end
+	if (IsPossessBarVisible ~= nil and IsPossessBarVisible()) then
+		return true
+	end
+	return false
+end
 
 function muteCatQOL:BuildBarButtons(prefix, maxButtons)
 	local buttons = {}
@@ -103,6 +123,7 @@ function muteCatQOL:UpdateBarMouseoverBehavior()
 	local mounted = IsMounted()
 	local _, instanceType = IsInInstance()
 	local keepVisibleInInstance = (instanceType == "party" or instanceType == "raid")
+	local specialActionBarState = IsSpecialActionBarStateActive()
 
 	local groupMouseOverState = {}
 	for _, config in ipairs(MUTECATQOL_BAR_CONFIGS) do
@@ -147,7 +168,7 @@ function muteCatQOL:UpdateBarMouseoverBehavior()
 			targetAlpha = inCombat and 1 or 0
 			forceInstant = true
 		elseif (mode == "mounthide") then
-			targetAlpha = (mounted and not keepVisibleInInstance) and 0 or 1
+			targetAlpha = (mounted and not keepVisibleInInstance and not specialActionBarState) and 0 or 1
 			forceInstant = true
 		else
 			targetAlpha = 1

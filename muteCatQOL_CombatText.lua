@@ -65,6 +65,6 @@ function muteCatQOL:InitializeCombatTextHider()
 	C_Timer.After(0, function()
 		muteCatQOL:ApplyCombatTextHideCVars()
 	end)
-		
+
 	MUTECATQOL_COMBATTEXT_INITIALIZED = true
 end

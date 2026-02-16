@@ -36,6 +36,28 @@ local function SafeEquals(a, b)
 	return a == b
 end
 
+local function IsViewerChildFrame(frame)
+	return frame ~= nil and frame.GetWidth ~= nil and frame:GetWidth() > 5
+end
+
+local function GetStackText(itemFrame)
+	if (itemFrame.Applications ~= nil and itemFrame.Applications.Applications ~= nil) then
+		return itemFrame.Applications.Applications
+	end
+	if (itemFrame.Icon ~= nil and itemFrame.Icon.Applications ~= nil) then
+		return itemFrame.Icon.Applications
+	end
+	return nil
+end
+
+local function HideCollectedRegions(itemFrame)
+	for _, hidden in ipairs(itemFrame.muteCatQOLHidden or {}) do
+		if (hidden ~= nil and hidden.Hide ~= nil) then
+			hidden:Hide()
+		end
+	end
+end
+
 local function ScanSlot(slot)
 	if (slot.muteCatQOLScanned) then
 		return
@@ -145,11 +167,7 @@ function muteCatQOL:ApplyBuffIconVisualStyle(itemFrame)
 		end
 	end
 
-	for _, hidden in ipairs(itemFrame.muteCatQOLHidden or {}) do
-		if (hidden ~= nil and hidden.Hide ~= nil) then
-			hidden:Hide()
-		end
-	end
+	HideCollectedRegions(itemFrame)
 
 	if (itemFrame.DebuffBorder ~= nil and itemFrame.DebuffBorder.SetAlpha ~= nil) then
 		itemFrame.DebuffBorder:SetAlpha(0)
@@ -161,13 +179,7 @@ function muteCatQOL:ApplyBuffIconStackStyle(itemFrame)
 		return
 	end
 
-	local stackText = nil
-	if (itemFrame.Applications ~= nil and itemFrame.Applications.Applications ~= nil) then
-		stackText = itemFrame.Applications.Applications
-	elseif (itemFrame.Icon ~= nil and itemFrame.Icon.Applications ~= nil) then
-		stackText = itemFrame.Icon.Applications
-	end
-
+	local stackText = GetStackText(itemFrame)
 	if (stackText == nil) then
 		return
 	end
@@ -207,7 +219,7 @@ function muteCatQOL:ApplyAllBuffIconStylesAndStacks(viewer)
 	end
 
 	for _, child in pairs({ viewer:GetChildren() }) do
-		if (child ~= nil and child.GetWidth ~= nil and child:GetWidth() > 5) then
+		if IsViewerChildFrame(child) then
 			muteCatQOL:ApplyBuffIconStyleAndStack(child)
 		end
 	end
