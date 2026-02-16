@@ -105,6 +105,18 @@ function muteCatQOL:MainFunction()
 		if not(muteCatQOL.frame:IsEventRegistered("ADDON_LOADED")) then
 			muteCatQOL.frame:RegisterEvent("ADDON_LOADED")
 		end
+		if not(muteCatQOL.frame:IsEventRegistered("CHALLENGE_MODE_START")) then
+			muteCatQOL.frame:RegisterEvent("CHALLENGE_MODE_START")
+		end
+		if not(muteCatQOL.frame:IsEventRegistered("CHALLENGE_MODE_COMPLETED")) then
+			muteCatQOL.frame:RegisterEvent("CHALLENGE_MODE_COMPLETED")
+		end
+		if not(muteCatQOL.frame:IsEventRegistered("CHALLENGE_MODE_RESET")) then
+			muteCatQOL.frame:RegisterEvent("CHALLENGE_MODE_RESET")
+		end
+		if not(muteCatQOL.frame:IsEventRegistered("SCENARIO_UPDATE")) then
+			muteCatQOL.frame:RegisterEvent("SCENARIO_UPDATE")
+		end
 
 		muteCatQOL:HookGOCActionButtons()
 		muteCatQOL:HookGOCPetActionButtons()

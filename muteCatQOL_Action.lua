@@ -18,7 +18,6 @@ local function IsActiveCategoryGCD(activeCategory)
 	return type(activeCategory) == "number" and activeCategory == 2316
 end
 
-
 local function IsBar4ButtonName(buttonName)
 	return buttonName ~= nil and buttonName:find("^MultiBarRightButton") ~= nil
 end
@@ -28,7 +27,6 @@ local function IsBottomRightStackBarName(buttonName)
 		buttonName:find("^MultiBar6Button") ~= nil
 	)
 end
-
 
 local function IsBar5ButtonName(buttonName)
 	return buttonName ~= nil and buttonName:find("^MultiBar5Button") ~= nil
@@ -827,18 +825,4 @@ function muteCatQOL:HookGOCPetActionButtons()
 		end
 	end
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
