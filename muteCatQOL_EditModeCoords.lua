@@ -160,18 +160,11 @@ function muteCatQOL:UpdateEditModeCoords()
 	end
 end
 
-function muteCatQOL:StartEditModeCoordsTicker()
-	if (MUTECATQOL_EDITMODE_COORDS_TICKER ~= nil) then
-		return
-	end
-	MUTECATQOL_EDITMODE_COORDS_TICKER = C_Timer.NewTicker(UPDATE_INTERVAL, function()
-		muteCatQOL:UpdateEditModeCoords()
-	end)
-end
+-- StartEditModeCoordsTicker removed, functionality moved to MasterTicker in Core.lua
 
 function muteCatQOL:HookEditModeCoordsSelection()
 	local manager = _G["EditModeManagerFrame"]
-	if (manager == nil or MUTECATQOL_EDITMODE_COORDS_HOOKED) then
+	if (manager == nil or muteCatQOL.Runtime.Hooks.EditModeCoordsSelection) then
 		return
 	end
 
@@ -191,11 +184,11 @@ function muteCatQOL:HookEditModeCoordsSelection()
 		end
 	end)
 
-	MUTECATQOL_EDITMODE_COORDS_HOOKED = true
+	muteCatQOL.Runtime.Hooks.EditModeCoordsSelection = true
 end
 
 function muteCatQOL:RegisterLibEditModeCallbacks()
-	if (MUTECATQOL_EDITMODE_LIB_CALLBACKS_REGISTERED) then
+	if (muteCatQOL.Runtime.Hooks.EditModeLibCallbacks) then
 		return
 	end
 
@@ -217,13 +210,12 @@ function muteCatQOL:RegisterLibEditModeCallbacks()
 		end
 	end)
 
-	MUTECATQOL_EDITMODE_LIB_CALLBACKS_REGISTERED = true
+	muteCatQOL.Runtime.Hooks.EditModeLibCallbacks = true
 end
 
 function muteCatQOL:InitializeEditModeCoords()
 	muteCatQOL:CreateEditModeCoordsFrame()
 	muteCatQOL:RegisterLibEditModeCallbacks()
 	muteCatQOL:HookEditModeCoordsSelection()
-	muteCatQOL:StartEditModeCoordsTicker()
 	muteCatQOL:UpdateEditModeCoords()
 end

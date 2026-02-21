@@ -2,28 +2,6 @@ local _G = _G
 local ipairs = ipairs
 local InCombatLockdown = InCombatLockdown
 local IsMounted = IsMounted
-local IsInInstance = IsInInstance
-local math_abs = math.abs
-local HasVehicleActionBar = HasVehicleActionBar
-local HasOverrideActionBar = HasOverrideActionBar
-local HasTempShapeshiftActionBar = HasTempShapeshiftActionBar
-local IsPossessBarVisible = IsPossessBarVisible
-
-local function IsSpecialActionBarStateActive()
-	if (HasVehicleActionBar ~= nil and HasVehicleActionBar()) then
-		return true
-	end
-	if (HasOverrideActionBar ~= nil and HasOverrideActionBar()) then
-		return true
-	end
-	if (HasTempShapeshiftActionBar ~= nil and HasTempShapeshiftActionBar()) then
-		return true
-	end
-	if (IsPossessBarVisible ~= nil and IsPossessBarVisible()) then
-		return true
-	end
-	return false
-end
 
 function muteCatQOL:BuildBarButtons(prefix, maxButtons)
 	local buttons = {}
@@ -46,12 +24,12 @@ function muteCatQOL:IsAnyBarButtonMouseOver(buttons)
 end
 
 function muteCatQOL:SetBarButtonsAlpha(config, alpha)
-	if (config.currentAlpha == alpha) then
-		return
-	end
+	if config.currentAlpha == alpha then return end
 	for _, button in ipairs(config.buttons) do
 		if (button ~= nil) then
-			button:SetAlpha(alpha)
+			if (button:GetAlpha() ~= alpha) then
+				button:SetAlpha(alpha)
+			end
 		end
 	end
 	config.lastAlpha = alpha
@@ -95,12 +73,12 @@ function muteCatQOL:UpdateBarButtonsAlphaWithHideDelay(config, targetAlpha, forc
 	end
 
 	local delta = targetAlpha - config.currentAlpha
-	if (math_abs(delta) <= 0.01) then
+	if (math.abs(delta) <= 0.01) then
 		muteCatQOL:SetBarButtonsAlpha(config, targetAlpha)
 		return
 	end
 
-	local tick = muteCatQOL.BarMouseoverTickTime or 0.1
+	local tick = muteCatQOL.BarMouseoverTickTime or 0.05
 	local duration = muteCatQOL.BarMouseoverFadeOutDuration or 0.2
 	local step = tick / duration
 	if (step > 1) then
@@ -114,92 +92,77 @@ function muteCatQOL:UpdateBarButtonsAlphaWithHideDelay(config, targetAlpha, forc
 	muteCatQOL:SetBarButtonsAlpha(config, newAlpha)
 end
 
+-- Reusable table to avoid creating a new one every tick
+local _groupMouseOverState = {}
+
 function muteCatQOL:UpdateBarMouseoverBehavior()
-	if (MUTECATQOL_BAR_CONFIGS == nil) then
-		return
-	end
+	wipe(_groupMouseOverState)
+	local inInstance, instanceType = IsInInstance()
+	local isExemptInstance = inInstance and (instanceType == "party" or instanceType == "raid" or instanceType == "pvp" or instanceType == "arena")
 
-	local inCombat = InCombatLockdown()
-	local mounted = IsMounted()
-	local _, instanceType = IsInInstance()
-	local keepVisibleInInstance = (instanceType == "party" or instanceType == "raid")
-	local specialActionBarState = IsSpecialActionBarStateActive()
-
-	local groupMouseOverState = {}
-	for _, config in ipairs(MUTECATQOL_BAR_CONFIGS) do
+	for _, config in ipairs(muteCatQOL.Runtime.State.BarConfigs) do
 		if (config.group ~= nil) then
-			local current = groupMouseOverState[config.group]
+			local current = _groupMouseOverState[config.group]
 			if not(current) then
-				groupMouseOverState[config.group] = muteCatQOL:IsAnyBarButtonMouseOver(config.buttons)
+				_groupMouseOverState[config.group] = muteCatQOL:IsAnyBarButtonMouseOver(config.buttons)
 			else
-				groupMouseOverState[config.group] = current or muteCatQOL:IsAnyBarButtonMouseOver(config.buttons)
+				_groupMouseOverState[config.group] = current or muteCatQOL:IsAnyBarButtonMouseOver(config.buttons)
 			end
 		end
 	end
 
-	for _, config in ipairs(MUTECATQOL_BAR_CONFIGS) do
-		local mode = config.mode
-		local needsMouseOver = (mode == "showhide" or mode == "dim")
-		local isMouseOver = false
-		if (needsMouseOver) then
-			if (config.group ~= nil) then
-				isMouseOver = groupMouseOverState[config.group] or false
-			else
-				isMouseOver = muteCatQOL:IsAnyBarButtonMouseOver(config.buttons)
-			end
+	for _, config in ipairs(muteCatQOL.Runtime.State.BarConfigs) do
+		local isMouseOver
+		if (config.group ~= nil) then
+			isMouseOver = _groupMouseOverState[config.group] or false
+		else
+			isMouseOver = muteCatQOL:IsAnyBarButtonMouseOver(config.buttons)
 		end
-
 		local targetAlpha
 		local forceInstant = false
-
-		if (mode == "showhide") then
+		if (config.mode == "showhide") then
 			targetAlpha = isMouseOver and 1 or 0
-		elseif (mode == "dim") then
-			if inCombat then
+		elseif (config.mode == "dim") then
+			if InCombatLockdown() then
 				targetAlpha = 1
 				forceInstant = true
 			else
 				targetAlpha = isMouseOver and 1 or config.dimAlpha
 			end
-		elseif (mode == "combatdim") then
-			targetAlpha = inCombat and 1 or (config.dimAlpha or 0.3)
+		elseif (config.mode == "combatdim") then
+			targetAlpha = InCombatLockdown() and 1 or (config.dimAlpha or 0.3)
 			forceInstant = true
-		elseif (mode == "combatonly") then
-			targetAlpha = inCombat and 1 or 0
+		elseif (config.mode == "combatonly") then
+			targetAlpha = InCombatLockdown() and 1 or 0
 			forceInstant = true
-		elseif (mode == "mounthide") then
-			targetAlpha = (mounted and not keepVisibleInInstance and not specialActionBarState) and 0 or 1
+		elseif (config.mode == "mounthide") then
+			targetAlpha = (IsMounted() and not isExemptInstance) and 0 or 1
+			forceInstant = true
+		elseif (config.mode == "visibilityrules") then
+			targetAlpha = muteCatQOL:ShouldHideByVisibilityRules() and 0 or 1
 			forceInstant = true
 		else
 			targetAlpha = 1
 		end
-
 		muteCatQOL:UpdateBarButtonsAlphaWithHideDelay(config, targetAlpha, forceInstant, isMouseOver)
 	end
 end
 
 muteCatQOL.BarMouseoverHideDelay = 1.0
 muteCatQOL.BarMouseoverFadeOutDuration = 0.2
-muteCatQOL.BarMouseoverTickTime = 0.1
+muteCatQOL.BarMouseoverTickTime = 0.05
 
 function muteCatQOL:InitializeBarMouseoverBehavior()
-	if (MUTECATQOL_BAR_CONFIGS == nil) then
-		MUTECATQOL_BAR_CONFIGS = {
+	if (muteCatQOL.Runtime.State.BarConfigs == nil) then
+		muteCatQOL.Runtime.State.BarConfigs = {
 			{ id = 1, mode = "showhide", group = "main123", buttons = muteCatQOL:BuildBarButtons("ActionButton", 12), lastAlpha = nil },
 			{ id = 2, mode = "showhide", group = "main123", buttons = muteCatQOL:BuildBarButtons("MultiBarBottomLeftButton", 12), lastAlpha = nil },
 			{ id = 3, mode = "showhide", group = "main123", buttons = muteCatQOL:BuildBarButtons("MultiBarBottomRightButton", 12), lastAlpha = nil },
-			{ id = 4, mode = "combatdim", dimAlpha = 0.3, buttons = muteCatQOL:BuildBarButtons("MultiBarRightButton", 12), lastAlpha = nil },
+			{ id = 4, mode = "visibilityrules", buttons = muteCatQOL:BuildBarButtons("MultiBarRightButton", 12), lastAlpha = nil },
 			{ id = 5, mode = "showhide", buttons = muteCatQOL:BuildBarButtons("MultiBarLeftButton", 12), lastAlpha = nil },
-			{ id = 6, mode = "mounthide", buttons = muteCatQOL:BuildBarButtons("MultiBar5Button", 12), lastAlpha = nil },
-			{ id = 7, mode = "mounthide", buttons = muteCatQOL:BuildBarButtons("MultiBar6Button", 12), lastAlpha = nil },
-			{ id = 8, mode = "mounthide", buttons = muteCatQOL:BuildBarButtons("MultiBar7Button", 12), lastAlpha = nil },
+			{ id = 6, mode = "showhide", buttons = muteCatQOL:BuildBarButtons("MultiBar5Button", 12), lastAlpha = nil },
+			{ id = 7, mode = "showhide", buttons = muteCatQOL:BuildBarButtons("MultiBar6Button", 12), lastAlpha = nil },
+			{ id = 8, mode = "visibilityrules", buttons = muteCatQOL:BuildBarButtons("MultiBar7Button", 12), lastAlpha = nil },
 		}
 	end
-
-	if (MUTECATQOL_BAR_MOUSEOVER_TICKER == nil) then
-		MUTECATQOL_BAR_MOUSEOVER_TICKER = C_Timer.NewTicker(muteCatQOL.BarMouseoverTickTime or 0.1, function()
-			muteCatQOL:UpdateBarMouseoverBehavior()
-		end)
-	end
-	muteCatQOL:UpdateBarMouseoverBehavior()
 end

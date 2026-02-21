@@ -1,25 +1,54 @@
 local _G = _G
-local type = type
-local pairs = pairs
-local ipairs = ipairs
+local type, pairs, ipairs = type, pairs, ipairs
 local GetActionInfo = GetActionInfo
 local GetPetActionInfo = GetPetActionInfo
 local GetPetActionSlotUsable = GetPetActionSlotUsable
 local GetPetActionCooldown = GetPetActionCooldown
+
+-- Blizzard API Locals for performance
 local C_ActionBar_IsUsableAction = C_ActionBar.IsUsableAction
 local C_ActionBar_GetActionCooldown = C_ActionBar.GetActionCooldown
 local C_ActionBar_GetActionCooldownDuration = C_ActionBar.GetActionCooldownDuration
-local C_ActionBar_GetActionUseCount = C_ActionBar.GetActionUseCount
 local C_Item_GetItemCooldown = C_Item.GetItemCooldown
 local C_Spell_IsSpellUsable = C_Spell.IsSpellUsable
 local C_Spell_GetSpellCooldown = C_Spell.GetSpellCooldown
 local C_Spell_GetSpellCooldownDuration = C_Spell.GetSpellCooldownDuration
+
 local function IsActiveCategoryGCD(activeCategory)
-	return type(activeCategory) == "number" and activeCategory == 2316
+	if type(activeCategory) ~= "number" then return false end
+	-- Midnight 12.0.1: Compare via pcall to catch secret number errors.
+	return muteCatQOL.SafeEqual(activeCategory, 2316)
 end
+
+function muteCatQOL.SafeGreater(val, threshold)
+	if type(val) ~= "number" then return false end
+	local res = false
+	pcall(function() res = (val > threshold) end)
+	return res
+end
+
+function muteCatQOL.SafeEqual(val1, val2)
+	local res = false
+	pcall(function() res = (val1 == val2) end)
+	return res
+end
+
+function muteCatQOL.SafeNotEqual(val1, val2)
+	local res = false
+	pcall(function() res = (val1 ~= val2) end)
+	return res
+end
+
 
 local function IsBar4ButtonName(buttonName)
 	return buttonName ~= nil and buttonName:find("^MultiBarRightButton") ~= nil
+end
+local function IsNoTooltipBarButtonName(buttonName)
+	return buttonName ~= nil and (
+		buttonName:find("^MultiBarRightButton") ~= nil or
+		buttonName:find("^MultiBar7Button") ~= nil or
+		buttonName:find("^MultiBarLeftButton") ~= nil
+	)
 end
 local function IsBottomRightStackBarName(buttonName)
 	return buttonName ~= nil and (
@@ -28,63 +57,20 @@ local function IsBottomRightStackBarName(buttonName)
 	)
 end
 
+
 local function IsBar5ButtonName(buttonName)
 	return buttonName ~= nil and buttonName:find("^MultiBar5Button") ~= nil
 end
+
+muteCatQOL.ActionBarPrefixes = muteCatQOL.Constants.Assets.Prefixes
+
 function muteCatQOL:UpdateAllActionButtons()
-	for i = 1, muteCatQOL.NUM_ACTIONBAR_BUTTONS do
-		local actionButton
-		actionButton = _G["ExtraActionButton"..i]
-		if (actionButton and actionButton.GOCUpdateCheck) then
-			actionButton:GOCUpdateCheck()
-		end
-		actionButton = _G["ActionButton"..i]
-		if (actionButton and actionButton.GOCUpdateCheck) then
-			actionButton:GOCUpdateCheck()
-		end
-		actionButton = _G["MultiBarBottomLeftButton"..i]
-		if (actionButton and actionButton.GOCUpdateCheck) then
-			actionButton:GOCUpdateCheck()
-		end
-		actionButton = _G["MultiBarBottomRightButton"..i]
-		if (actionButton and actionButton.GOCUpdateCheck) then
-			actionButton:GOCUpdateCheck()
-		end
-		actionButton = _G["MultiBarLeftButton"..i]
-		if (actionButton and actionButton.GOCUpdateCheck) then
-			actionButton:GOCUpdateCheck()
-		end
-		actionButton = _G["MultiBarRightButton"..i]
-		if (actionButton and actionButton.GOCUpdateCheck) then
-			actionButton:GOCUpdateCheck()
-		end
-		actionButton = _G["MultiBar5Button"..i]
-		if (actionButton and actionButton.GOCUpdateCheck) then
-			actionButton:GOCUpdateCheck()
-		end
-		actionButton = _G["MultiBar6Button"..i]
-		if (actionButton and actionButton.GOCUpdateCheck) then
-			actionButton:GOCUpdateCheck()
-		end
-		actionButton = _G["MultiBar7Button"..i]
-		if (actionButton and actionButton.GOCUpdateCheck) then
-			actionButton:GOCUpdateCheck()
-		end
-		actionButton = _G["MultiBar8Button"..i]
-		if (actionButton and actionButton.GOCUpdateCheck) then
-			actionButton:GOCUpdateCheck()
-		end
-		actionButton = _G["StanceButton"..i]
-		if (actionButton and actionButton.GOCUpdateCheck) then
-			actionButton:GOCUpdateCheck()
-		end
-		actionButton = _G["PossessButton"..i]
-		if (actionButton and actionButton.GOCUpdateCheck) then
-			actionButton:GOCUpdateCheck()
-		end
-		actionButton = _G["OverrideActionBarButton"..i]
-		if (actionButton and actionButton.GOCUpdateCheck) then
-			actionButton:GOCUpdateCheck()
+	for _, prefix in ipairs(muteCatQOL.ActionBarPrefixes) do
+		for i = 1, muteCatQOL.NUM_ACTIONBAR_BUTTONS do
+			local actionButton = _G[prefix..i]
+			if (actionButton and actionButton.GOCUpdateCheck) then
+				actionButton:GOCUpdateCheck()
+			end
 		end
 	end
 	for i = 1, 40 do
@@ -174,19 +160,27 @@ muteCatQOL.GOCActionButtonUpdateCheck = function(self, isOnGCD)
 	local useGCDCurve = false
 	local action = self.action
 	local spellID = self.spellID
+
 	if (action) then
 		local isUsable, notEnoughMana = C_ActionBar_IsUsableAction(action)
 		if not(isUsable or notEnoughMana) then
 			self.icon:SetDesaturation(1)
 			return
 		end
+		
+		-- Nil-Safe duration fetch for 12.0.1
 		duration = C_ActionBar_GetActionCooldownDuration(action)
+		if (not duration) then 
+			self.icon:SetDesaturation(0)
+			return 
+		end
+
 		if duration:HasSecretValues() then
 			local actionInfoType, actionInfoID, actionInfoSubType = GetActionInfo(action)
-			if actionInfoType == "item" then
+			if (actionInfoType == "item") then
 				local _, durationSeconds, enableCooldownTimer = C_Item_GetItemCooldown(actionInfoID)
 				if (isOnGCD == nil) then
-					isOnGCD = (enableCooldownTimer and durationSeconds > 0 and durationSeconds <= muteCatQOL.GCD) or false
+					isOnGCD = (enableCooldownTimer and muteCatQOL.SafeGreater(durationSeconds, 0) and not muteCatQOL.SafeGreater(durationSeconds, muteCatQOL.GCD)) or false
 				end
 				if not(isOnGCD) then
 					duration = durationSeconds
@@ -197,34 +191,32 @@ muteCatQOL.GOCActionButtonUpdateCheck = function(self, isOnGCD)
 				if (isOnGCD == nil) then
 					local actionCooldownInfo = C_ActionBar_GetActionCooldown(action)
 					if actionCooldownInfo then
-						isOnGCD = actionCooldownInfo.isOnGCD or false
+						isOnGCD = actionCooldownInfo.isOnGCD or IsActiveCategoryGCD(actionCooldownInfo.activeCategory) or false
 						if not(isOnGCD) then
-							if actionInfoType == "macro" and actionInfoSubType=="item" then
+							-- Midnight Macro/Item hybrid check
+							if (actionInfoType == "macro" or actionInfoSubType == "item") then
 								useGCDCurve = true
 							end
 						end
 					end
 				end
-				if isOnGCD then
-					duration = nil
-				end
+				if (isOnGCD) then duration = nil end
 			end
 		else
-			if not(isOnGCD) then
+			if (isOnGCD == nil) then
 				local actionCooldownInfo = C_ActionBar_GetActionCooldown(action)
 				if actionCooldownInfo then
 					isOnGCD = actionCooldownInfo.isOnGCD or IsActiveCategoryGCD(actionCooldownInfo.activeCategory) or false
 					if not(isOnGCD) then
-						local actionInfoType, _, actionInfoSubType = GetActionInfo(action)
-						if actionInfoType ~= "spell" and actionInfoSubType~="spell" and actionInfoSubType~="pet" then
+						local actionType, _, actionSubType = GetActionInfo(action)
+						if actionType ~= "spell" and actionSubType ~= "spell" and actionSubType ~= "pet" then
+							-- Fallback for items with non-secret but short durations
 							isOnGCD = (actionCooldownInfo.isEnabled and duration:GetRemainingDuration() > 0 and duration:GetTotalDuration() <= muteCatQOL.GCD) or false
 						end
 					end
 				end
 			end
-			if isOnGCD then
-				duration = nil
-			end
+			if (isOnGCD) then duration = nil end
 		end
 	elseif (spellID) then
 		local isUsable, notEnoughMana = C_Spell_IsSpellUsable(spellID)
@@ -242,26 +234,18 @@ muteCatQOL.GOCActionButtonUpdateCheck = function(self, isOnGCD)
 			duration = C_Spell_GetSpellCooldownDuration(spellID)
 		end
 	end
-	if duration then
-		if type(duration)=="number" then
-			if (duration > 0) then
-				self.icon:SetDesaturation(1)
-			else
-				self.icon:SetDesaturation(0)
-			end
+
+	-- Evaluation logic
+	if (duration) then
+		if (type(duration) == "number") then
+			self.icon:SetDesaturation(muteCatQOL.SafeGreater(duration, 0) and 1 or 0)
 		else
-			if duration:HasSecretValues() then
-				if not(useGCDCurve) then
-					self.icon:SetDesaturation(duration:EvaluateRemainingDuration(muteCatQOL.DesaturationCurve))
-				else
-					self.icon:SetDesaturation(duration:EvaluateRemainingDuration(muteCatQOL.DesaturationCurveGCD))
-				end
+			-- Midnight safe duration evaluation
+			if (duration:HasSecretValues()) then
+				local curve = useGCDCurve and muteCatQOL.DesaturationCurveGCD or muteCatQOL.DesaturationCurve
+				self.icon:SetDesaturation(duration:EvaluateRemainingDuration(curve) or 0)
 			else
-				if (duration:GetRemainingDuration() > 0) then
-					self.icon:SetDesaturation(1)
-				else
-					self.icon:SetDesaturation(0)
-				end
+				self.icon:SetDesaturation((duration:GetRemainingDuration() > 0) and 1 or 0)
 			end
 		end
 	else
@@ -278,7 +262,7 @@ muteCatQOL.GOCPetActionButtonUpdateCheck = function(self)
 		return
 	end
 	local _, duration, enable = GetPetActionCooldown(index)
-	if (enable and duration and duration > 0 and duration > muteCatQOL.GCD) then
+	if (enable and duration and muteCatQOL.SafeGreater(duration, muteCatQOL.GCD)) then
 		self.icon:SetDesaturation(1)
 	else
 		self.icon:SetDesaturation(0)
@@ -300,93 +284,18 @@ muteCatQOL.ButtonParentUpdateHookFunc = function(self)
 end
 
 muteCatQOL.ApplyStackCountStyle = function(button)
-	if (button == nil or button.Count == nil) then
-		return
-	end
-
-	local countText = button.Count
-	local buttonName = button.GetName ~= nil and button:GetName() or nil
-	local isActionBar4Button = IsBar4ButtonName(buttonName)
-	local isActionBar7Button = IsBottomRightStackBarName(buttonName)
-	local isBar5Button = IsBar5ButtonName(buttonName)
-
-	local function UpdateStackCountVisibility()
-		countText:Show()
-	end
-
-	if (MUTECATQOL_COUNT_ONSHOW_HOOKED == nil) then
-		MUTECATQOL_COUNT_ONSHOW_HOOKED = {}
-	end
-	if not(MUTECATQOL_COUNT_ONSHOW_HOOKED[countText]) then
-		countText:HookScript("OnShow", function(self)
-			local parent = self:GetParent()
-			if (parent ~= nil) then
-				muteCatQOL.ApplyStackCountStyle(parent)
-			end
-		end)
-		MUTECATQOL_COUNT_ONSHOW_HOOKED[countText] = true
-	end
-
-	if (countText.HasScript ~= nil and countText:HasScript("OnTextChanged")) then
-		if (MUTECATQOL_COUNT_ONTEXTCHANGED_HOOKED == nil) then
-			MUTECATQOL_COUNT_ONTEXTCHANGED_HOOKED = {}
-		end
-		if not(MUTECATQOL_COUNT_ONTEXTCHANGED_HOOKED[countText]) then
-			countText:HookScript("OnTextChanged", function(self)
-				local parent = self:GetParent()
-				if (parent ~= nil) then
-					muteCatQOL.ApplyStackCountStyle(parent)
-				end
-			end)
-			MUTECATQOL_COUNT_ONTEXTCHANGED_HOOKED[countText] = true
-		end
-	end
-
-	if (isActionBar4Button) then
-		countText:Hide()
-		return
-	end
-
-	countText:ClearAllPoints()
-	if (isActionBar7Button) then
-		countText:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 2, 0)
-		countText:SetJustifyH("RIGHT")
-		countText:SetJustifyV("BOTTOM")
-	else
-		if (isBar5Button) then
-			countText:SetPoint("TOPRIGHT", button, "TOPRIGHT", 0, 0)
-		else
-			countText:SetPoint("TOPRIGHT", button, "TOPRIGHT", 3, 0)
-		end
-		countText:SetJustifyH("RIGHT")
-		countText:SetJustifyV("TOP")
-	end
-	countText:SetTextColor(1, 0, 1, 1)
-	local font, _, flags = countText:GetFont()
-	if (font ~= nil) then
-		countText:SetFont(font, 18, flags)
-	end
-	UpdateStackCountVisibility()
+	-- Actionbar stack styling intentionally disabled (Cooldown Viewer styling remains separate).
+	return
 end
-muteCatQOL.BorderReplacementTexture = "Interface\\AddOns\\muteCatQOL\\resources\\uiactionbar2x"
-muteCatQOL.BorderReplacementAtlas = {
-	["UI-HUD-ActionBar-IconFrame-Slot"] = { 64, 31, 0.701172, 0.951172, 0.102051, 0.162598, false, false, "2x" },
-	["UI-HUD-ActionBar-IconFrame"] = { 46, 22, 0.701172, 0.880859, 0.316895, 0.36084, false, false, "2x" },
-	["UI-HUD-ActionBar-IconFrame-AddRow"] = { 51, 25, 0.701172, 0.900391, 0.215332, 0.265137, false, false, "2x" },
-	["UI-HUD-ActionBar-IconFrame-Down"] = { 46, 22, 0.701172, 0.880859, 0.430176, 0.474121, false, false, "2x" },
-	["UI-HUD-ActionBar-IconFrame-Flash"] = { 46, 22, 0.701172, 0.880859, 0.475098, 0.519043, false, false, "2x" },
-	["UI-HUD-ActionBar-IconFrame-FlyoutBorderShadow"] = { 52, 26, 0.701172, 0.904297, 0.163574, 0.214355, false, false, "2x" },
-	["UI-HUD-ActionBar-IconFrame-Mouseover"] = { 46, 22, 0.701172, 0.880859, 0.52002, 0.563965, false, false, "2x" },
-	["UI-HUD-ActionBar-IconFrame-Border"] = { 46, 22, 0.701172, 0.880859, 0.361816, 0.405762, false, false, "2x" },
-	["UI-HUD-ActionBar-IconFrame-AddRow-Down"] = { 51, 25, 0.701172, 0.900391, 0.266113, 0.315918, false, false, "2x" },
-}
+muteCatQOL.BorderReplacementTexture = muteCatQOL.Constants.Assets.BorderTexture
+muteCatQOL.BorderReplacementAtlas = muteCatQOL.Constants.Assets.BorderReplacementAtlas
 
 muteCatQOL.RemapOverlayTexture = function(texture)
 	if (texture == nil or texture.GetAtlas == nil) then
 		return
 	end
-	local atlasId = texture:GetAtlas()
-	if (atlasId == nil) then
+	local okAtlas, atlasId = pcall(texture.GetAtlas, texture)
+	if (not okAtlas or type(atlasId) ~= "string" or atlasId == "") then
 		return
 	end
 	local atlas = muteCatQOL.BorderReplacementAtlas[atlasId]
@@ -405,16 +314,31 @@ muteCatQOL.ApplyBorderlessStyle = function(button)
 	if (button == nil) then
 		return
 	end
+	local function SuppressTexture(tex, hookTableKey)
+		if (tex == nil) then return end
+		tex:SetAlpha(0)
+		tex:Hide()
+		if (muteCatQOL.Runtime.Hooks[hookTableKey] == nil) then
+			muteCatQOL.Runtime.Hooks[hookTableKey] = {}
+		end
+		if not(muteCatQOL.Runtime.Hooks[hookTableKey][tex]) then
+			tex:HookScript("OnShow", function(self)
+				self:SetAlpha(0)
+				self:Hide()
+			end)
+			muteCatQOL.Runtime.Hooks[hookTableKey][tex] = true
+		end
+	end
 	if (button.NormalTexture ~= nil) then
 		button.NormalTexture:Hide()
-		if (MUTECATQOL_NORMALTEXTURE_ONSHOW_HOOKED == nil) then
-			MUTECATQOL_NORMALTEXTURE_ONSHOW_HOOKED = {}
+		if (muteCatQOL.Runtime.Hooks.NormalTextureOnShow == nil) then
+			muteCatQOL.Runtime.Hooks.NormalTextureOnShow = {}
 		end
-		if not(MUTECATQOL_NORMALTEXTURE_ONSHOW_HOOKED[button.NormalTexture]) then
+		if not(muteCatQOL.Runtime.Hooks.NormalTextureOnShow[button.NormalTexture]) then
 			button.NormalTexture:HookScript("OnShow", function(self)
 				self:Hide()
 			end)
-			MUTECATQOL_NORMALTEXTURE_ONSHOW_HOOKED[button.NormalTexture] = true
+			muteCatQOL.Runtime.Hooks.NormalTextureOnShow[button.NormalTexture] = true
 		end
 	end
 	if (button.icon ~= nil and button.IconMask ~= nil and button.icon.RemoveMaskTexture ~= nil) then
@@ -423,6 +347,12 @@ muteCatQOL.ApplyBorderlessStyle = function(button)
 	if (button.cooldown ~= nil and button.cooldown.SetAllPoints ~= nil) then
 		button.cooldown:SetAllPoints(button)
 	end
+	SuppressTexture(button.HighlightTexture, "HighlightTextureOnShow")
+	SuppressTexture(button.Flash, "FlashTextureOnShow")
+	SuppressTexture(button.SpellHighlightTexture, "SpellHighlightTextureOnShow")
+	SuppressTexture(button.PushedTexture, "PushedTextureOnShow")
+	SuppressTexture(button.CheckedTexture, "CheckedTextureOnShow")
+	SuppressTexture(button.NewActionTexture, "NewActionTextureOnShow")
 	muteCatQOL.RemapOverlayTexture(button.HighlightTexture)
 	muteCatQOL.RemapOverlayTexture(button.CheckedTexture)
 	muteCatQOL.RemapOverlayTexture(button.SpellHighlightTexture)
@@ -437,10 +367,34 @@ muteCatQOL.ApplyBorderlessStyle = function(button)
 			self:Hide()
 		end)
 	end
+	if (button.SpellActivationAlert ~= nil) then
+		button.SpellActivationAlert:SetScript("OnShow", function(self)
+			self:Hide()
+		end)
+	end
 	if (button.InterruptDisplay ~= nil) then
 		button.InterruptDisplay:SetScript("OnShow", function(self)
 			self:Hide()
 		end)
+	end
+
+	-- Disable hover tooltips for MultiBarRight and MultiBar7 only.
+	if (button.GetName ~= nil) then
+		local buttonName = button:GetName()
+		if (IsNoTooltipBarButtonName(buttonName)) then
+			if (muteCatQOL.Runtime.Hooks.NoTooltipOnEnter == nil) then
+				muteCatQOL.Runtime.Hooks.NoTooltipOnEnter = {}
+			end
+			if not(muteCatQOL.Runtime.Hooks.NoTooltipOnEnter[button]) then
+				button:HookScript("OnEnter", function()
+					if GameTooltip then GameTooltip:Hide() end
+				end)
+				button:HookScript("OnLeave", function()
+					if GameTooltip then GameTooltip:Hide() end
+				end)
+				muteCatQOL.Runtime.Hooks.NoTooltipOnEnter[button] = true
+			end
+		end
 	end
 end
 
@@ -468,36 +422,44 @@ muteCatQOL.HideActionButtonOverlay = function(button)
 		if (button.Count ~= nil and region == button.Count) then
 			return
 		end
+		-- Never hide the keybind text.
+		if (button.HotKey ~= nil and region == button.HotKey) then
+			return
+		end
 		if (region.IsObjectType == nil) then
 			return
 		end
 		if (region:IsObjectType("Texture")) then
 			region:Hide()
-			if (MUTECATQOL_OVERLAY_REGION_ONSHOW_HOOKED == nil) then
-				MUTECATQOL_OVERLAY_REGION_ONSHOW_HOOKED = {}
+			if (muteCatQOL.Runtime.Hooks.OverlayRegionOnShow == nil) then
+				muteCatQOL.Runtime.Hooks.OverlayRegionOnShow = {}
 			end
-			if not(MUTECATQOL_OVERLAY_REGION_ONSHOW_HOOKED[region]) then
+			if not(muteCatQOL.Runtime.Hooks.OverlayRegionOnShow[region]) then
 				region:HookScript("OnShow", function(self)
 					self:Hide()
 				end)
-				MUTECATQOL_OVERLAY_REGION_ONSHOW_HOOKED[region] = true
+				muteCatQOL.Runtime.Hooks.OverlayRegionOnShow[region] = true
 			end
 		elseif (region:IsObjectType("FontString")) then
+			local regionName = region.GetName and region:GetName() or nil
+			if (regionName ~= nil and regionName:find("HotKey")) then
+				return
+			end
 			local text = region:GetText()
 			local isNumericText = (text ~= nil and text ~= "" and tonumber(text) ~= nil)
 			if not(isNumericText) then
 				region:Hide()
-				if (MUTECATQOL_OVERLAY_REGION_ONSHOW_HOOKED == nil) then
-					MUTECATQOL_OVERLAY_REGION_ONSHOW_HOOKED = {}
+				if (muteCatQOL.Runtime.Hooks.OverlayRegionOnShow == nil) then
+					muteCatQOL.Runtime.Hooks.OverlayRegionOnShow = {}
 				end
-				if not(MUTECATQOL_OVERLAY_REGION_ONSHOW_HOOKED[region]) then
+				if not(muteCatQOL.Runtime.Hooks.OverlayRegionOnShow[region]) then
 					region:HookScript("OnShow", function(self)
 						local currentText = self:GetText()
 						if not(currentText ~= nil and currentText ~= "" and tonumber(currentText) ~= nil) then
 							self:Hide()
 						end
 					end)
-					MUTECATQOL_OVERLAY_REGION_ONSHOW_HOOKED[region] = true
+					muteCatQOL.Runtime.Hooks.OverlayRegionOnShow[region] = true
 				end
 			end
 		end
@@ -519,82 +481,82 @@ end
 
 -- Function that establishes the needed GOC hooks for an ActionButton
 function muteCatQOL:HookGOCActionButtonUpdate(button)
-	if (MUTECATQOL_STATIC_STYLE_APPLIED_AB == nil) then
-		MUTECATQOL_STATIC_STYLE_APPLIED_AB = {}
+	if (muteCatQOL.Runtime.Hooks.StaticStyleApplied == nil) then
+		muteCatQOL.Runtime.Hooks.StaticStyleApplied = {}
 	end
-	if not(MUTECATQOL_STATIC_STYLE_APPLIED_AB[button]) then
+	if not(muteCatQOL.Runtime.Hooks.StaticStyleApplied[button]) then
 		muteCatQOL.ApplyBorderlessStyle(button)
 		muteCatQOL.ApplyStackCountStyle(button)
 		muteCatQOL.HideActionButtonOverlay(button)
-		MUTECATQOL_STATIC_STYLE_APPLIED_AB[button] = true
+		muteCatQOL.Runtime.Hooks.StaticStyleApplied[button] = true
 	end
 	-- Establish the main GOC ActionButton Update function
-	if (MUTECATQOL_UPDATECHECK_SET_AB == nil) then
-		MUTECATQOL_UPDATECHECK_SET_AB = {}
+	if (muteCatQOL.Runtime.Hooks.UpdateCheckSet == nil) then
+		muteCatQOL.Runtime.Hooks.UpdateCheckSet = {}
 	end
-	if not(MUTECATQOL_UPDATECHECK_SET_AB[button]) then
+	if not(muteCatQOL.Runtime.Hooks.UpdateCheckSet[button]) then
 		button.GOCUpdateCheck = ActionButton_muteCatQOL_UpdateCheck
-		MUTECATQOL_UPDATECHECK_SET_AB[button] = true
+		muteCatQOL.Runtime.Hooks.UpdateCheckSet[button] = true
 	end
 	-- ActionButton essentials GOC hooks (AB hooks: OnCooldownDone, OnShow, OnHide, Update, UpdateUsable)
 	if button.cooldown then
-		if (MUTECATQOL_ONCOOLDOWNDONE_HOOKED_ABC == nil) then
-			MUTECATQOL_ONCOOLDOWNDONE_HOOKED_ABC = {}
+		if (muteCatQOL.Runtime.Hooks.OnCooldownDone == nil) then
+			muteCatQOL.Runtime.Hooks.OnCooldownDone = {}
 		end
-		if not(MUTECATQOL_ONCOOLDOWNDONE_HOOKED_ABC[button]) then
+		if not(muteCatQOL.Runtime.Hooks.OnCooldownDone[button]) then
 			button.cooldown:HookScript("OnCooldownDone", muteCatQOL.ButtonParentUpdateHookFunc)
-			MUTECATQOL_ONCOOLDOWNDONE_HOOKED_ABC[button] = true
+			muteCatQOL.Runtime.Hooks.OnCooldownDone[button] = true
 		end
-		if (MUTECATQOL_ONSHOW_HOOKED_ABC == nil) then
-			MUTECATQOL_ONSHOW_HOOKED_ABC = {}
+		if (muteCatQOL.Runtime.Hooks.OnShow == nil) then
+			muteCatQOL.Runtime.Hooks.OnShow = {}
 		end
-		if not(MUTECATQOL_ONSHOW_HOOKED_ABC[button]) then
+		if not(muteCatQOL.Runtime.Hooks.OnShow[button]) then
 			button.cooldown:HookScript("OnShow", muteCatQOL.ButtonParentUpdateHookFunc)
-			MUTECATQOL_ONSHOW_HOOKED_ABC[button] = true
+			muteCatQOL.Runtime.Hooks.OnShow[button] = true
 		end
-		if (MUTECATQOL_ONHIDE_HOOKED_ABC == nil) then
-			MUTECATQOL_ONHIDE_HOOKED_ABC = {}
+		if (muteCatQOL.Runtime.Hooks.OnHide == nil) then
+			muteCatQOL.Runtime.Hooks.OnHide = {}
 		end
-		if not(MUTECATQOL_ONHIDE_HOOKED_ABC[button]) then
+		if not(muteCatQOL.Runtime.Hooks.OnHide[button]) then
 			button.cooldown:HookScript("OnHide", muteCatQOL.ButtonParentUpdateHookFunc)
-			MUTECATQOL_ONHIDE_HOOKED_ABC[button] = true
+			muteCatQOL.Runtime.Hooks.OnHide[button] = true
 		end
 	end
 	if type(button.Update)=="function" then
-		if (MUTECATQOL_UPDATE_HOOKED_AB == nil) then
-			MUTECATQOL_UPDATE_HOOKED_AB = {}
+		if (muteCatQOL.Runtime.Hooks.Update == nil) then
+			muteCatQOL.Runtime.Hooks.Update = {}
 		end
-		if not(MUTECATQOL_UPDATE_HOOKED_AB[button]) then
+		if not(muteCatQOL.Runtime.Hooks.Update[button]) then
 			hooksecurefunc(button, "Update", muteCatQOL.ButtonUpdateHookFunc)
-			MUTECATQOL_UPDATE_HOOKED_AB[button] = true
+			muteCatQOL.Runtime.Hooks.Update[button] = true
 		end
 	end
 	if type(button.UpdateUsable)=="function" then
-		if (MUTECATQOL_UPDATEUSABLE_HOOKED_AB == nil) then
-			MUTECATQOL_UPDATEUSABLE_HOOKED_AB = {}
+		if (muteCatQOL.Runtime.Hooks.UpdateUsable == nil) then
+			muteCatQOL.Runtime.Hooks.UpdateUsable = {}
 		end
-		if not(MUTECATQOL_UPDATEUSABLE_HOOKED_AB[button]) then
+		if not(muteCatQOL.Runtime.Hooks.UpdateUsable[button]) then
 			hooksecurefunc(button, "UpdateUsable", muteCatQOL.ButtonUpdateHookFunc)
-			MUTECATQOL_UPDATEUSABLE_HOOKED_AB[button] = true
+			muteCatQOL.Runtime.Hooks.UpdateUsable[button] = true
 		end
 	end
 	-- ActionButton GOC hooks to update the RegisteredActionSpells when needed (AB hooks: UpdateAction)
 	if type(button.UpdateAction) == "function" then
-		if (MUTECATQOL_UPDATEACTION_HOOKED_AB == nil) then
-			MUTECATQOL_UPDATEACTION_HOOKED_AB = {}
+		if (muteCatQOL.Runtime.Hooks.UpdateAction == nil) then
+			muteCatQOL.Runtime.Hooks.UpdateAction = {}
 		end
-		if not(MUTECATQOL_UPDATEACTION_HOOKED_AB[button]) then
+		if not(muteCatQOL.Runtime.Hooks.UpdateAction[button]) then
 			hooksecurefunc(button, "UpdateAction", muteCatQOL.UpdateActionButtonAction)
-			MUTECATQOL_UPDATEACTION_HOOKED_AB[button] = true
+			muteCatQOL.Runtime.Hooks.UpdateAction[button] = true
 		end
 	end
 	if type(button.UpdateCount) == "function" then
-		if (MUTECATQOL_UPDATECOUNT_HOOKED_AB == nil) then
-			MUTECATQOL_UPDATECOUNT_HOOKED_AB = {}
+		if (muteCatQOL.Runtime.Hooks.UpdateCount == nil) then
+			muteCatQOL.Runtime.Hooks.UpdateCount = {}
 		end
-		if not(MUTECATQOL_UPDATECOUNT_HOOKED_AB[button]) then
+		if not(muteCatQOL.Runtime.Hooks.UpdateCount[button]) then
 			hooksecurefunc(button, "UpdateCount", muteCatQOL.ApplyStackCountStyle)
-			MUTECATQOL_UPDATECOUNT_HOOKED_AB[button] = true
+			muteCatQOL.Runtime.Hooks.UpdateCount[button] = true
 		end
 	end
 	muteCatQOL.UpdateActionButtonAction(button)
@@ -602,56 +564,56 @@ end
 
 -- Function that establishes the needed GOC hooks for an PetActionButton
 function muteCatQOL:HookGOCPetActionButtonUpdate(button)
-	if (MUTECATQOL_STATIC_STYLE_APPLIED_AB == nil) then
-		MUTECATQOL_STATIC_STYLE_APPLIED_AB = {}
+	if (muteCatQOL.Runtime.Hooks.StaticStyleApplied == nil) then
+		muteCatQOL.Runtime.Hooks.StaticStyleApplied = {}
 	end
-	if not(MUTECATQOL_STATIC_STYLE_APPLIED_AB[button]) then
+	if not(muteCatQOL.Runtime.Hooks.StaticStyleApplied[button]) then
 		muteCatQOL.ApplyBorderlessStyle(button)
 		muteCatQOL.HideActionButtonOverlay(button)
-		MUTECATQOL_STATIC_STYLE_APPLIED_AB[button] = true
+		muteCatQOL.Runtime.Hooks.StaticStyleApplied[button] = true
 	end
 	-- Establish the main GOC PetActionButton Update function
-	if (MUTECATQOL_UPDATECHECK_SET_AB == nil) then
-		MUTECATQOL_UPDATECHECK_SET_AB = {}
+	if (muteCatQOL.Runtime.Hooks.UpdateCheckSet == nil) then
+		muteCatQOL.Runtime.Hooks.UpdateCheckSet = {}
 	end
-	if not(MUTECATQOL_UPDATECHECK_SET_AB[button]) then
+	if not(muteCatQOL.Runtime.Hooks.UpdateCheckSet[button]) then
 		button.GOCUpdateCheck = PetActionButton_muteCatQOL_UpdateCheck
-		MUTECATQOL_UPDATECHECK_SET_AB[button] = true
+		muteCatQOL.Runtime.Hooks.UpdateCheckSet[button] = true
 	end
 	-- PetActionButton essentials GOC hooks (AB hooks: OnCooldownDone, OnShow, OnHide, Update, UpdateCooldowns)
 	if button.cooldown then
-		if (MUTECATQOL_ONCOOLDOWNDONE_HOOKED_ABC == nil) then
-			MUTECATQOL_ONCOOLDOWNDONE_HOOKED_ABC = {}
+		if (muteCatQOL.Runtime.Hooks.OnCooldownDone == nil) then
+			muteCatQOL.Runtime.Hooks.OnCooldownDone = {}
 		end
-		if not(MUTECATQOL_ONCOOLDOWNDONE_HOOKED_ABC[button]) then
+		if not(muteCatQOL.Runtime.Hooks.OnCooldownDone[button]) then
 			button.cooldown:HookScript("OnCooldownDone", muteCatQOL.ButtonParentUpdateHookFunc)
-			MUTECATQOL_ONCOOLDOWNDONE_HOOKED_ABC[button] = true
+			muteCatQOL.Runtime.Hooks.OnCooldownDone[button] = true
 		end
-		if (MUTECATQOL_ONSHOW_HOOKED_ABC == nil) then
-			MUTECATQOL_ONSHOW_HOOKED_ABC = {}
+		if (muteCatQOL.Runtime.Hooks.OnShow == nil) then
+			muteCatQOL.Runtime.Hooks.OnShow = {}
 		end
-		if not(MUTECATQOL_ONSHOW_HOOKED_ABC[button]) then
+		if not(muteCatQOL.Runtime.Hooks.OnShow[button]) then
 			button.cooldown:HookScript("OnShow", muteCatQOL.ButtonParentUpdateHookFunc)
-			MUTECATQOL_ONSHOW_HOOKED_ABC[button] = true
+			muteCatQOL.Runtime.Hooks.OnShow[button] = true
 		end
-		if (MUTECATQOL_ONHIDE_HOOKED_ABC == nil) then
-			MUTECATQOL_ONHIDE_HOOKED_ABC = {}
+		if (muteCatQOL.Runtime.Hooks.OnHide == nil) then
+			muteCatQOL.Runtime.Hooks.OnHide = {}
 		end
-		if not(MUTECATQOL_ONHIDE_HOOKED_ABC[button]) then
+		if not(muteCatQOL.Runtime.Hooks.OnHide[button]) then
 			button.cooldown:HookScript("OnHide", muteCatQOL.ButtonParentUpdateHookFunc)
-			MUTECATQOL_ONHIDE_HOOKED_ABC[button] = true
+			muteCatQOL.Runtime.Hooks.OnHide[button] = true
 		end
 	end
 	if type(button.Update)=="function" then
-		if (MUTECATQOL_UPDATE_HOOKED_AB == nil) then
-			MUTECATQOL_UPDATE_HOOKED_AB = {}
+		if (muteCatQOL.Runtime.Hooks.Update == nil) then
+			muteCatQOL.Runtime.Hooks.Update = {}
 		end
-		if not(MUTECATQOL_UPDATE_HOOKED_AB[button]) then
+		if not(muteCatQOL.Runtime.Hooks.Update[button]) then
 			hooksecurefunc(button, "Update", muteCatQOL.ButtonUpdateHookFunc)
-			MUTECATQOL_UPDATE_HOOKED_AB[button] = true
+			muteCatQOL.Runtime.Hooks.Update[button] = true
 		end
 	end
-	if not(MUTECATQOL_UPDATECOOLDOWNS_HOOKED_PAB) then
+	if not(muteCatQOL.Runtime.Hooks.UpdateCooldowns) then
 		if (PetActionBar ~= nil and type(PetActionBar.UpdateCooldowns) == "function") then
 			hooksecurefunc(PetActionBar, "UpdateCooldowns", function(self)
 				for i = 1, muteCatQOL.NUM_PET_ACTION_SLOTS do
@@ -662,7 +624,7 @@ function muteCatQOL:HookGOCPetActionButtonUpdate(button)
 				end
 			end)
 		end
-		MUTECATQOL_UPDATECOOLDOWNS_HOOKED_PAB = true
+		muteCatQOL.Runtime.Hooks.UpdateCooldowns = true
 	end
 	muteCatQOL.UpdatePetActionButtonAction(button)
 end
@@ -703,7 +665,7 @@ end
 
 -- Function to set hooks for SpellFlyout frame to detect the newly created SpellFlyoutButtons
 function muteCatQOL:HookGOCSpellFlyout()
-	if not(MUTECATQOL_SPELLFLYOUT_HOOKED) then
+	if not(muteCatQOL.Runtime.Hooks.SpellFlyout) then
 		hooksecurefunc(SpellFlyout, "Toggle", function(self, flyoutButton, flyoutID, isActionBar, specID, showFullTooltip, reason)
 			if (not(self:IsShown()) and self.glyphActivating) then
 				return
@@ -733,65 +695,18 @@ function muteCatQOL:HookGOCSpellFlyout()
 				end
 			end
 		end)
-		MUTECATQOL_SPELLFLYOUT_HOOKED = true
+		muteCatQOL.Runtime.Hooks.SpellFlyout = true
 	end
 end
 
 -- Function to iterate through ActionButtons and hook them
 function muteCatQOL:HookGOCActionButtons()
-	for i = 1, muteCatQOL.NUM_ACTIONBAR_BUTTONS do
-		local actionButton
-		actionButton = _G["ExtraActionButton"..i]
-		if (actionButton) then
-			muteCatQOL:HookGOCActionButtonUpdate(actionButton)
-		end
-		actionButton = _G["ActionButton"..i]
-		if (actionButton) then
-			muteCatQOL:HookGOCActionButtonUpdate(actionButton)
-		end
-		actionButton = _G["MultiBarBottomLeftButton"..i]
-		if (actionButton) then
-			muteCatQOL:HookGOCActionButtonUpdate(actionButton)
-		end
-		actionButton = _G["MultiBarBottomRightButton"..i]
-		if (actionButton) then
-			muteCatQOL:HookGOCActionButtonUpdate(actionButton)
-		end
-		actionButton = _G["MultiBarLeftButton"..i]
-		if (actionButton) then
-			muteCatQOL:HookGOCActionButtonUpdate(actionButton)
-		end
-		actionButton = _G["MultiBarRightButton"..i]
-		if (actionButton) then
-			muteCatQOL:HookGOCActionButtonUpdate(actionButton)
-		end
-		actionButton = _G["MultiBar5Button"..i]
-		if (actionButton) then
-			muteCatQOL:HookGOCActionButtonUpdate(actionButton)
-		end
-		actionButton = _G["MultiBar6Button"..i]
-		if (actionButton) then
-			muteCatQOL:HookGOCActionButtonUpdate(actionButton)
-		end
-		actionButton = _G["MultiBar7Button"..i]
-		if (actionButton) then
-			muteCatQOL:HookGOCActionButtonUpdate(actionButton)
-		end
-		actionButton = _G["MultiBar8Button"..i]
-		if (actionButton) then
-			muteCatQOL:HookGOCActionButtonUpdate(actionButton)
-		end
-		actionButton = _G["StanceButton"..i]
-		if (actionButton) then
-			muteCatQOL:HookGOCActionButtonUpdate(actionButton)
-		end
-		actionButton = _G["PossessButton"..i]
-		if (actionButton) then
-			muteCatQOL:HookGOCActionButtonUpdate(actionButton)
-		end
-		actionButton = _G["OverrideActionBarButton"..i]
-		if (actionButton) then
-			muteCatQOL:HookGOCActionButtonUpdate(actionButton)
+	for _, prefix in ipairs(muteCatQOL.ActionBarPrefixes) do
+		for i = 1, muteCatQOL.NUM_ACTIONBAR_BUTTONS do
+			local actionButton = _G[prefix..i]
+			if (actionButton) then
+				muteCatQOL:HookGOCActionButtonUpdate(actionButton)
+			end
 		end
 	end
 	for i = 1, 40 do
@@ -802,18 +717,6 @@ function muteCatQOL:HookGOCActionButtons()
 	end
 	-- SpellFlyoutButtons are created dynamically as needed. This needs to be monitored to apply GOC hooks to new ones.
 	muteCatQOL:HookGOCSpellFlyout()
-	if not(MUTECATQOL_ACTIONBUTTON_UPDATECOOLDOWN_HOOKED) then
-		if (type(ActionButton_UpdateCooldown) == "function") then
-			hooksecurefunc("ActionButton_UpdateCooldown", muteCatQOL.ButtonUpdateHookFunc)
-			MUTECATQOL_ACTIONBUTTON_UPDATECOOLDOWN_HOOKED = true
-		end
-	end
-	if not(MUTECATQOL_MULTICASTSPELLBUTTON_UPDATECOOLDOWN_HOOKED) then
-		if (type(MultiCastSpellButton_UpdateCooldown) == "function") then
-			hooksecurefunc("MultiCastSpellButton_UpdateCooldown", muteCatQOL.ButtonUpdateHookFunc)
-			MUTECATQOL_MULTICASTSPELLBUTTON_UPDATECOOLDOWN_HOOKED = true
-		end
-	end
 end
 
 -- Function to iterate through PetActionButtons and hook them
@@ -826,3 +729,15 @@ function muteCatQOL:HookGOCPetActionButtons()
 	end
 end
 
+if not(muteCatQOL.Runtime.Hooks.ActionButtonUpdateCooldown) then
+	if (type(ActionButton_UpdateCooldown) == "function") then
+		hooksecurefunc("ActionButton_UpdateCooldown", muteCatQOL.ButtonUpdateHookFunc)
+		muteCatQOL.Runtime.Hooks.ActionButtonUpdateCooldown = true
+	end
+end
+if not(muteCatQOL.Runtime.Hooks.MultiCastSpellButtonUpdateCooldown) then
+	if (type(MultiCastSpellButton_UpdateCooldown) == "function") then
+		hooksecurefunc("MultiCastSpellButton_UpdateCooldown", muteCatQOL.ButtonUpdateHookFunc)
+		muteCatQOL.Runtime.Hooks.MultiCastSpellButtonUpdateCooldown = true
+	end
+end

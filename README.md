@@ -9,7 +9,6 @@ It is always-on (no options panel) and applies all features automatically.
 - Cleaner Blizzard button borders/overlays
 - Stack count styling and custom anchor rules
 - Stance bar visibility logic (hide on configured stance)
-- Objective Tracker header + minimize button hidden
 - Micro menu alpha: `30%` idle, `100%` on mouseover
 - Bags bar permanently hidden
 - Buff bar mouseover visibility with hide delay
