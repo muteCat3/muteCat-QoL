@@ -1,17 +1,23 @@
 local _G = _G
+<<<<<<< HEAD
 local hooksecurefunc = hooksecurefunc
+=======
+>>>>>>> 2356f3b (Update QoL features and core logic)
 
 -- ============================================================ --
 -- Error Filter                                                 --
 -- ============================================================ --
 local ignoredErrors = {}
 
+<<<<<<< HEAD
 local function AddIgnoredError(errorString)
 	if errorString then
 		ignoredErrors[errorString] = true
 	end
 end
 
+=======
+>>>>>>> 2356f3b (Update QoL features and core logic)
 local function CleanMsg(text)
 	if type(text) ~= "string" then return "" end
 	-- Strip color codes |c...|r
@@ -53,6 +59,10 @@ local function PopulateIgnoredErrors()
 		"Nicht genügend Wut", "Not enough rage",
 		"Nicht genügend Fokus", "Not enough focus",
 		"Nicht genügend Mana", "Not enough mana",
+<<<<<<< HEAD
+=======
+		"Nicht genügend Runen", "Not enough runes",
+>>>>>>> 2356f3b (Update QoL features and core logic)
 		"Ziel muss vor Euch stehen", "Target must be in front of you",
 		"Ihr seid zu weit entfernt", "You are too far away",
 		"Ihr habt kein Ziel", "You have no target",
@@ -62,7 +72,14 @@ local function PopulateIgnoredErrors()
 		"Das könnt Ihr während einer Bewegung nicht tun", "Can't do that while moving",
 		"Ungültiges Ziel", "Invalid target",
 		"Unterbrochen", "Interrupted",
+<<<<<<< HEAD
 		"Zauber unterbrochen", "Spell interrupted"
+=======
+		"Zauber unterbrochen", "Spell interrupted",
+		"Ihr seid verstummt", "You are silenced",
+		"Ihr seid benommen", "You are dazed",
+		"Kann noch nicht verwendet werden", "Item is not ready yet",
+>>>>>>> 2356f3b (Update QoL features and core logic)
 	}
 	
 	for _, str in ipairs(manualList) do
@@ -70,6 +87,7 @@ local function PopulateIgnoredErrors()
 	end
 end
 
+<<<<<<< HEAD
 local function MuteCat_AddMessage(self, text, ...)
 	if not text then return end
 	local cleaned = CleanMsg(text)
@@ -81,6 +99,8 @@ local function MuteCat_AddMessage(self, text, ...)
 	end
 end
 
+=======
+>>>>>>> 2356f3b (Update QoL features and core logic)
 function muteCatQOL:InitializeErrorFilter()
 	self.Runtime = self.Runtime or {}
 	self.Runtime.Hooks = self.Runtime.Hooks or {}
@@ -130,6 +150,7 @@ function muteCatQOL:InitializeErrorFilter()
 	end
 end
 
+<<<<<<< HEAD
 -- ============================================================ --
 -- Easy Item Destroy                                            --
 -- ============================================================ --
@@ -149,6 +170,8 @@ function muteCatQOL:InitializeEasyItemDestroy()
 	end
 end
 
+=======
+>>>>>>> 2356f3b (Update QoL features and core logic)
 ---Aggressively enforces the hidden state of unwanted UI elements.
 ---Should be called on login, zone change, and leaving combat.
 function muteCatQOL:EnforceAutomationState()
@@ -160,12 +183,15 @@ function muteCatQOL:EnforceAutomationState()
 	muteCatQOL:ForceHideFrame(PVPArenaTextString, "PVPArenaTextStringOnShow", true)
 	muteCatQOL:ForceHideFrame(PVPTimerText, "PVPTimerTextOnShow", true)
 
+<<<<<<< HEAD
 	-- Talking Head Lockdown
 	if TalkingHeadFrame then
 		TalkingHeadFrame:UnregisterAllEvents()
 		TalkingHeadFrame:Hide()
 	end
 
+=======
+>>>>>>> 2356f3b (Update QoL features and core logic)
 	-- Boss Target Frames Lockdown
 	if BossTargetFrameContainer then
 		BossTargetFrameContainer:SetAlpha(0)
@@ -182,6 +208,7 @@ function muteCatQOL:EnforceAutomationState()
 end
 
 -- ============================================================ --
+<<<<<<< HEAD
 -- Utility: Fast Loot & Movie Skip                              --
 -- ============================================================ --
 function muteCatQOL:InitializeAutomation()
@@ -217,5 +244,11 @@ function muteCatQOL:InitializeAutomation()
 	self:InitializeEasyItemDestroy()
 	
 	-- Initial enforcement
+=======
+-- Automation Bootstrap                                          --
+-- ============================================================ --
+function muteCatQOL:InitializeAutomation()
+	self:InitializeErrorFilter()
+>>>>>>> 2356f3b (Update QoL features and core logic)
 	self:EnforceAutomationState()
 end

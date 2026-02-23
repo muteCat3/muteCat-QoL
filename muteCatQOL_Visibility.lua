@@ -32,25 +32,66 @@ function muteCatQOL:ShouldForceShowForCombatOrInstance()
 end
 
 function muteCatQOL:ShouldHideByVisibilityRules()
+	self.Runtime = self.Runtime or {}
+	self.Runtime.State = self.Runtime.State or {}
+
 	if self:ShouldForceShowForCombatOrInstance() then
+		self.Runtime.State.LinkedHUDHidden = false
 		return false
 	end
 	if self:IsClientSceneActive() then
+		self.Runtime.State.LinkedHUDHidden = true
 		return true
 	end
 	if (C_ActionBar and C_ActionBar.HasOverrideActionBar and C_ActionBar.HasOverrideActionBar()) or UnitInVehicle("player") then
+		self.Runtime.State.LinkedHUDHidden = true
 		return true
 	end
 	if IsMiniGameActive() then
+		self.Runtime.State.LinkedHUDHidden = true
 		return true
 	end
 	if IsTravelStateActive() then
+		self.Runtime.State.LinkedHUDHidden = true
 		return true
 	end
 	if IsResting and IsResting() then
+		self.Runtime.State.LinkedHUDHidden = true
 		return true
 	end
+	self.Runtime.State.LinkedHUDHidden = false
 	return false
+end
+
+function muteCatQOL:UpdateVisibilityState()
+	return self:ShouldHideByVisibilityRules()
+end
+
+function muteCatQOL:IsLinkedHUDHidden()
+	-- Always refresh the state when asked, to ensure third-party cooldown viewers/unitframes get fresh data.
+	return self:ShouldHideByVisibilityRules()
+end
+
+function muteCatQOL:InitializeVisibilityEvents()
+	if self.Runtime.Hooks.VisibilityEventsInitialized then return end
+	
+	local f = CreateFrame("Frame")
+	local events = {
+		"PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
+		"PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA",
+		"PLAYER_UPDATE_RESTING", "UPDATE_SHAPESHIFT_FORM",
+		"UPDATE_OVERRIDE_ACTIONBAR", "UNIT_ENTERED_VEHICLE", "UNIT_EXITED_VEHICLE",
+		"PLAYER_MOUNT_DISPLAY_CHANGED"
+	}
+	for _, e in ipairs(events) do f:RegisterEvent(e) end
+	f:SetScript("OnEvent", function()
+		muteCatQOL:ShouldHideByVisibilityRules()
+		if muteCatQOL.QueueImmediateBarMouseoverUpdate then
+			muteCatQOL:QueueImmediateBarMouseoverUpdate()
+		end
+	end)
+	
+	self.Runtime.Hooks.VisibilityEventsInitialized = true
 end
 
 function muteCatQOL:ForceHideFrame(frame, hookKey, hardOnShowHide)
@@ -61,9 +102,7 @@ function muteCatQOL:ForceHideFrame(frame, hookKey, hardOnShowHide)
 	if muteCatQOL.Runtime and muteCatQOL.Runtime.Hooks and muteCatQOL.Runtime.Hooks[hookKey] then
 		return
 	end
-	if hardOnShowHide and frame.SetScript and frame.Hide then
-		frame:SetScript("OnShow", frame.Hide)
-	elseif frame.HookScript then
+	if frame.HookScript then
 		frame:HookScript("OnShow", function(self)
 			self:SetAlpha(0)
 			self:Hide()

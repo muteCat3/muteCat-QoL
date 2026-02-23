@@ -1,10 +1,14 @@
 ## Interface: 120005, 120001, 120000
 ## Title: muteCat QOL
 ## Author: Ben
+<<<<<<< HEAD
 ## Version: 3.2.0
+=======
+## Version: 3.2.1
+>>>>>>> 2356f3b (Update QoL features and core logic)
 ## IconTexture: Interface\Addons\muteCat QoL\micon
 ## SavedVariables: muteCatQOLDB
-## OptionalDeps: LibEditMode
+## OptionalDeps: LibEditMode, AllTheThings
 
 # Libraries
 embeds.xml
@@ -18,9 +22,9 @@ muteCatQOL_Stance.lua
 muteCatQOL_Channel.lua
 muteCatQOL_Action.lua
 muteCatQOL_Bars.lua
+muteCatQOL_ATT.lua
 muteCatQOL_UI.lua
 muteCatQOL_Automation.lua
 muteCatQOL_Consumables.lua
 muteCatQOL_Map.lua
 muteCatQOL_EditModeCoords.lua
-muteCatQOL_BuffStacks.lua

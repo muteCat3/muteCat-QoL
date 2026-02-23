@@ -37,7 +37,7 @@ function muteCatQOL:SetBarButtonsAlpha(config, alpha)
 end
 
 function muteCatQOL:UpdateBarButtonsAlphaWithHideDelay(config, targetAlpha, forceInstant, isMouseOver)
-	if (forceInstant) then
+	if (forceInstant or (muteCatQOL.BarMouseoverHideDelay or 0) <= 0) then
 		config.pendingFadeOutAt = nil
 		muteCatQOL:SetBarButtonsAlpha(config, targetAlpha)
 		return
@@ -80,6 +80,10 @@ function muteCatQOL:UpdateBarButtonsAlphaWithHideDelay(config, targetAlpha, forc
 
 	local tick = muteCatQOL.BarMouseoverTickTime or 0.05
 	local duration = muteCatQOL.BarMouseoverFadeOutDuration or 0.2
+	if duration <= 0 then
+		muteCatQOL:SetBarButtonsAlpha(config, targetAlpha)
+		return
+	end
 	local step = tick / duration
 	if (step > 1) then
 		step = 1
@@ -94,6 +98,43 @@ end
 
 -- Reusable table to avoid creating a new one every tick
 local _groupMouseOverState = {}
+local _barMouseoverUpdateQueued = false
+
+function muteCatQOL:QueueImmediateBarMouseoverUpdate()
+	if _barMouseoverUpdateQueued then
+		return
+	end
+	_barMouseoverUpdateQueued = true
+	C_Timer.After(0, function()
+		_barMouseoverUpdateQueued = false
+		if muteCatQOL.UpdateBarMouseoverBehavior then
+			muteCatQOL:UpdateBarMouseoverBehavior()
+		end
+	end)
+	if muteCatQOL.RequestMasterTickerBoost then
+		muteCatQOL:RequestMasterTickerBoost(0.2)
+	end
+end
+
+function muteCatQOL:HookBarMouseoverButtons()
+	muteCatQOL.Runtime = muteCatQOL.Runtime or {}
+	muteCatQOL.Runtime.Hooks = muteCatQOL.Runtime.Hooks or {}
+	muteCatQOL.Runtime.Hooks.BarMouseoverButtonHooks = muteCatQOL.Runtime.Hooks.BarMouseoverButtonHooks or {}
+
+	for _, config in ipairs(muteCatQOL.Runtime.State.BarConfigs or {}) do
+		for _, button in ipairs(config.buttons or {}) do
+			if button and not muteCatQOL.Runtime.Hooks.BarMouseoverButtonHooks[button] then
+				button:HookScript("OnEnter", function()
+					muteCatQOL:QueueImmediateBarMouseoverUpdate()
+				end)
+				button:HookScript("OnLeave", function()
+					muteCatQOL:QueueImmediateBarMouseoverUpdate()
+				end)
+				muteCatQOL.Runtime.Hooks.BarMouseoverButtonHooks[button] = true
+			end
+		end
+	end
+end
 
 function muteCatQOL:UpdateBarMouseoverBehavior()
 	wipe(_groupMouseOverState)
@@ -139,7 +180,12 @@ function muteCatQOL:UpdateBarMouseoverBehavior()
 			targetAlpha = (IsMounted() and not isExemptInstance) and 0 or 1
 			forceInstant = true
 		elseif (config.mode == "visibilityrules") then
+<<<<<<< HEAD
 			targetAlpha = muteCatQOL:ShouldHideByVisibilityRules() and 0 or 1
+=======
+			local hidden = muteCatQOL.IsLinkedHUDHidden and muteCatQOL:IsLinkedHUDHidden() or muteCatQOL:ShouldHideByVisibilityRules()
+			targetAlpha = hidden and 0 or 1
+>>>>>>> 2356f3b (Update QoL features and core logic)
 			forceInstant = true
 		else
 			targetAlpha = 1
@@ -148,8 +194,8 @@ function muteCatQOL:UpdateBarMouseoverBehavior()
 	end
 end
 
-muteCatQOL.BarMouseoverHideDelay = 1.0
-muteCatQOL.BarMouseoverFadeOutDuration = 0.2
+muteCatQOL.BarMouseoverHideDelay = 0
+muteCatQOL.BarMouseoverFadeOutDuration = 0
 muteCatQOL.BarMouseoverTickTime = 0.05
 
 function muteCatQOL:InitializeBarMouseoverBehavior()
@@ -165,4 +211,9 @@ function muteCatQOL:InitializeBarMouseoverBehavior()
 			{ id = 8, mode = "visibilityrules", buttons = muteCatQOL:BuildBarButtons("MultiBar7Button", 12), lastAlpha = nil },
 		}
 	end
+<<<<<<< HEAD
+=======
+	muteCatQOL:HookBarMouseoverButtons()
+	muteCatQOL:QueueImmediateBarMouseoverUpdate()
+>>>>>>> 2356f3b (Update QoL features and core logic)
 end

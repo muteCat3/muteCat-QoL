@@ -6,6 +6,7 @@ muteCatQOL.ServiceChannelNames = {
 	["services"] = true,
 	["dienst"] = true,
 	["dienste"] = true,
+	["dienstleistungen"] = true,
 }
 
 function muteCatQOL:IsServiceChannelName(channelName)
@@ -14,9 +15,12 @@ function muteCatQOL:IsServiceChannelName(channelName)
 	end
 
 	local normalized = string_lower(channelName)
-	normalized = string_gsub(normalized, "^%d+%.%s*", "")
-	normalized = string_gsub(normalized, "%s*%-.*$", "")
-	return muteCatQOL.ServiceChannelNames[normalized] == true
+	for serviceTerm in pairs(muteCatQOL.ServiceChannelNames) do
+		if normalized:find(serviceTerm, 1, true) then
+			return true
+		end
+	end
+	return false
 end
 
 function muteCatQOL:LeaveServiceChannel()

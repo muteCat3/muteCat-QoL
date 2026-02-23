@@ -34,10 +34,7 @@ It is always-on (no options panel) and applies all features automatically.
 ## Default CVars (highlights)
 
 - `cameraReduceUnexpectedMovement = 1`
-- `cameraYawSmoothSpeed = 180`
-- `cameraPitchSmoothSpeed = 180`
 - `cameraIndirectOffset = 0`
-- `test_cameraDynamicPitch = 0`
 - `cameraIndirectVisibility = 1`
 - `AutoPushSpellToActionBar = 0`
 - `UnitNamePlayerGuild = 0`

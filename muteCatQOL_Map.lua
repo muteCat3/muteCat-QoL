@@ -205,13 +205,4 @@ function muteCatQOL:ADDON_LOADED(addonName)
 	if (addonName == "LibEditMode") then
 		muteCatQOL:InitializeEditModeCoords()
 	end
-	if (addonName == "Blizzard_CooldownViewer") then
-		muteCatQOL:InitializeBuffIconStacks()
-	end
-	if (addonName == "muteCat QoL") then
-		muteCatQOL:InitializeBuffIconStacks()
-	end
-	if (addonName == "Blizzard_ChallengesUI") then
-		-- Auto-Keystone removed
-	end
 end

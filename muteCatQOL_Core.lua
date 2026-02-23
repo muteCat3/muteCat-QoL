@@ -14,7 +14,7 @@ muteCatQOL.frame = muteCatQOL.frame or CreateFrame("Frame", "muteCatQOLFrame")
 -- Constants (defined here to guarantee availability)            --
 -- ============================================================ --
 muteCatQOL.Constants = {
-	VERSION = "3.2.0",
+	VERSION = "3.2.1",
 	GCD = 1.88,
 	
 	-- Action Button Configurations
@@ -39,20 +39,9 @@ muteCatQOL.Constants = {
 	UI = {
 		MicroMenuIdleAlpha = 0.3,
 		BuffBarHideDelay = 1.0,
-		TickInterval = 0.2,
+		TickInterval = 0.05,
 		FastTickInterval = 0.05,
 		EditModeTickInterval = 0.1,
-	},
-
-	-- Buff / CDM Styling
-	BuffStacks = {
-		Size = 18,
-		Point = "TOP",
-		OffsetX = 1,
-		OffsetY = 7,
-		OverlayAtlas = "UI-HUD-CoolDownManager-IconOverlay",
-		BorderAtlas = "UI-HUD-ActionBar-IconFrame-Border",
-		Crop = 0.06,
 	},
 
 	-- Action Bar Assets
@@ -182,6 +171,7 @@ function muteCatQOL:ApplyErrorMessageFilter()
 			err == ERR_PARTY_LFG_TELEPORT_IN_COMBAT or
 			err == ERR_PET_SPELL_DEAD or
 			err == ERR_PLAYER_DEAD or
+			err == ERR_UNIT_IS_DEAD or
 			err == SPELL_FAILED_TARGET_NO_POCKETS or
 			err == ERR_ALREADY_PICKPOCKETED
 		) then
@@ -321,13 +311,13 @@ function muteCatQOL:MainFunction()
 		muteCatQOL:InitializeWorldMapMover()
 		
 		muteCatQOL:InitializeBarMouseoverBehavior()
+		muteCatQOL:InitializeVisibilityEvents()
 		muteCatQOL:InitializeUIUtilities()
 		muteCatQOL:InitializeAutomation()
-		muteCatQOL:InitializeAutoPotionMacro()
+		muteCatQOL:InitializeConsumableMacro()
 		muteCatQOL:InitializeFishingHelper()
 		muteCatQOL:InitializeEditModeCoords()
-		muteCatQOL:InitializeBuffIconStacks()
-		muteCatQOL:ApplyErrorMessageFilter()
+		muteCatQOL:InitializeATTMouseover()
 
 		muteCatQOL:InitializeMasterTicker()
 
@@ -340,6 +330,7 @@ end
 -- ============================================================ --
 function muteCatQOL:OnMasterTick()
 	if self.UpdateBarMouseoverBehavior then self:UpdateBarMouseoverBehavior() end
+	if self.UpdateManagedFrames then self:UpdateManagedFrames() end
 
 	muteCatQOL.Runtime.State.TickCount = (muteCatQOL.Runtime.State.TickCount or 0) + 1
 	if (muteCatQOL.Runtime.State.TickCount % 2 == 0) then

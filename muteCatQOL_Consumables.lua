@@ -2,7 +2,7 @@ local _G = _G
 local C_Container = C_Container
 local GetItemCountFn = (C_Container and C_Container.GetItemCount) or GetItemCount
 
-local AUTO_POTION_MACRO_NAME = "muteCatAutoPotion"
+local CONSUMABLE_MACRO_NAME = "muteCatConsumable"
 local FISHING_SPELL_ID = 131474
 local FISHING_DOUBLECLICK_MIN = 0.04
 local FISHING_DOUBLECLICK_MAX = 0.20
@@ -45,7 +45,7 @@ local function GetBestHealingPotionID()
 	return bestID
 end
 
-local function BuildAutoPotionMacroText()
+local function BuildConsumableMacroText()
 	local potionID = GetBestHealingPotionID()
 	local lines = {
 		"#showtooltip",
@@ -93,23 +93,23 @@ local function AllowFishingDoubleClick()
 	return true
 end
 
-function muteCatQOL:UpdateAutoPotionMacro()
+function muteCatQOL:UpdateConsumableMacro()
 	if InCombatLockdown and InCombatLockdown() then
-		muteCatQOL.Runtime.State.AutoPotionMacroPending = true
+		muteCatQOL.Runtime.State.ConsumableMacroPending = true
 		return
 	end
 
-	local macroText = BuildAutoPotionMacroText()
-	local macroIndex = GetMacroIndexByName(AUTO_POTION_MACRO_NAME)
+	local macroText = BuildConsumableMacroText()
+	local macroIndex = GetMacroIndexByName(CONSUMABLE_MACRO_NAME)
 	if macroIndex and macroIndex > 0 then
-		EditMacro(macroIndex, AUTO_POTION_MACRO_NAME, "INV_Potion_51", macroText, 0)
+		EditMacro(macroIndex, CONSUMABLE_MACRO_NAME, "INV_Potion_51", macroText, 0)
 	else
-		CreateMacro(AUTO_POTION_MACRO_NAME, "INV_Potion_51", macroText, false)
+		CreateMacro(CONSUMABLE_MACRO_NAME, "INV_Potion_51", macroText, false)
 	end
 end
 
-function muteCatQOL:InitializeAutoPotionMacro()
-	if muteCatQOL.Runtime.Hooks.AutoPotionMacroEventFrame then
+function muteCatQOL:InitializeConsumableMacro()
+	if muteCatQOL.Runtime.Hooks.ConsumableMacroEventFrame then
 		return
 	end
 
@@ -130,23 +130,28 @@ function muteCatQOL:InitializeAutoPotionMacro()
 			return
 		end
 		if eventName == "PLAYER_REGEN_ENABLED" then
-			if muteCatQOL.Runtime.State.AutoPotionMacroPending then
-				muteCatQOL.Runtime.State.AutoPotionMacroPending = false
-				muteCatQOL:UpdateAutoPotionMacro()
+			if muteCatQOL.Runtime.State.ConsumableMacroPending then
+				muteCatQOL.Runtime.State.ConsumableMacroPending = false
+				muteCatQOL:UpdateConsumableMacro()
 			end
 			return
 		end
-		muteCatQOL:UpdateAutoPotionMacro()
+		muteCatQOL:UpdateConsumableMacro()
 	end)
 
-	muteCatQOL.Runtime.Hooks.AutoPotionMacroEventFrame = frame
+	muteCatQOL.Runtime.Hooks.ConsumableMacroEventFrame = frame
 	C_Timer.After(0.25, function()
-		muteCatQOL:UpdateAutoPotionMacro()
+		muteCatQOL:UpdateConsumableMacro()
 	end)
 end
 
 local function UpdateFishingButtonSpell()
 	if not _G.muteCatQOLFishingButton then
+		return
+	end
+
+	if InCombatLockdown and InCombatLockdown() then
+		muteCatQOL.Runtime.State.FishingUpdateSpellPending = true
 		return
 	end
 
@@ -191,6 +196,10 @@ function muteCatQOL:InitializeFishingHelper()
 			end
 
 			if eventName == "PLAYER_REGEN_ENABLED" then
+				if muteCatQOL.Runtime.State.FishingUpdateSpellPending then
+					muteCatQOL.Runtime.State.FishingUpdateSpellPending = false
+					UpdateFishingButtonSpell()
+				end
 				if muteCatQOL.Runtime.State.FishingClearBindingsPending then
 					muteCatQOL.Runtime.State.FishingClearBindingsPending = false
 					ClearOverrideBindings(button)
